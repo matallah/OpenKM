@@ -1,0 +1,10 @@
+{
+  "realm": "your-realm",
+  "auth-server-url": "http://localhost:8080/auth",
+  "resource": "openkm-client",
+  "public-client": false,
+  "credentials": {
+    "secret": "your-client-secret"
+  },
+  "ssl-required": "external"
+}
