@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <beans:beans xmlns:beans="http://www.springframework.org/schema/beans"
              xmlns:security="http://www.springframework.org/schema/security"
              xmlns:context="http://www.springframework.org/schema/context"
@@ -19,17 +18,9 @@
   <beans:import resource="soap.xml"/>
   <beans:import resource="rest.xml"/>
   <beans:import resource="cmis.xml"/>
-  
+
   <!-- Swagger -->
   <beans:bean id="swagger2Feature" class="com.openkm.core.Swagger2Config" />
-
-  <!--
-  <beans:bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
-      <beans:property name="targetClass" value="org.springframework.security.core.context.SecurityContextHolder" />
-      <beans:property name="targetMethod" value="setStrategyName" />
-      <beans:property name="arguments" value="_INHERITABLETHREADLOCAL" />
-  </beans:bean>
-  -->
 
   <security:global-method-security secured-annotations="enabled"/>
 
@@ -93,42 +84,24 @@
   </security:http>
 
   <!-- Additional filter chain for normal users, matching all other requests -->
-  <!-- http://info.michael-simons.eu/2011/01/28/disable-jsessionid-path-parameter-in-java-web-applications/ -->
-  <security:http access-decision-manager-ref="accessDecisionManager" access-denied-page="/unauthorized.jsp">
-
-    <!-- GWT -->
-    <security:intercept-url pattern="/frontend/**" access="IS_AUTHENTICATED_FULLY"/>
-
-    <!-- JSPs -->
-    <security:intercept-url pattern="/login.jsp" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
-    <security:intercept-url pattern="/admin/**" access="ROLE_ADMIN"/>
-    <security:intercept-url pattern="/mobile/**" access="IS_AUTHENTICATED_FULLY"/>
-
-    <!-- Servlets -->
-    <security:intercept-url pattern="/RepositoryStartup" access="IS_AUTHENTICATED_FULLY"/>
-    <security:intercept-url pattern="/TextToSpeech" access="IS_AUTHENTICATED_FULLY"/>
-    <security:intercept-url pattern="/HtmlPreview" access="IS_AUTHENTICATED_FULLY"/>
-    <security:intercept-url pattern="/SyntaxHighlighter" access="IS_AUTHENTICATED_FULLY"/>
-    <security:intercept-url pattern="/Test" access="IS_AUTHENTICATED_FULLY"/>
-
-    <!-- Extensions -->
-    <security:intercept-url pattern="/extension/ZohoFileUpload" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
-    <security:intercept-url pattern="/extension/**" access="IS_AUTHENTICATED_FULLY"/>
-
-    <!-- Login page -->
-    <security:form-login login-page="/login.jsp" authentication-failure-url="/login.jsp?error=1"/>
-
+  <security:http use-expressions="true" entry-point-ref="customAuthenticationEntryPoint">
+    <security:intercept-url pattern="/**" access="isAuthenticated()"/>
+    <security:custom-filter position="FORM_LOGIN_FILTER" ref="customOAuth2Filter"/>
+    <security:logout logout-success-url="/login.jsp"/>
   </security:http>
 
-  <!-- Needed for changing default role prefix -->
-  <beans:bean id="accessDecisionManager" class="org.springframework.security.access.vote.AffirmativeBased">
-    <beans:property name="decisionVoters">
-      <beans:list>
-        <beans:bean class="org.springframework.security.web.access.expression.WebExpressionVoter"/>
-        <beans:ref bean="roleVoter"/>
-        <beans:bean class="org.springframework.security.access.vote.AuthenticatedVoter"/>
-      </beans:list>
-    </beans:property>
+  <!-- Custom AuthenticationEntryPoint -->
+  <beans:bean id="customAuthenticationEntryPoint" class="com.openkm.core.CustomLoginUrlAuthenticationEntryPoint">
+    <beans:constructor-arg value="/login.jsp"/>
+  </beans:bean>
+
+  <!-- Custom OAuth2 Filter -->
+  <beans:bean id="customOAuth2Filter" class="com.openkm.core.CustomOAuth2Filter">
+    <beans:constructor-arg value="OpenKM"/>
+    <beans:constructor-arg value="ZFB1qARH2EGhQw2VlxfURUxLntjRBrBI"/>
+    <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/auth"/>
+    <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/token"/>
+    <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/userinfo"/>
   </beans:bean>
 
   <!-- Security access logger -->
