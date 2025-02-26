@@ -11,6 +11,20 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import com.openkm.api.OKMAuth;
+import com.openkm.core.AccessDeniedException;
+import com.openkm.core.DatabaseException;
+import com.openkm.core.ItemExistsException;
+import com.openkm.core.PathNotFoundException;
+import com.openkm.module.db.DbAuthModule;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+
 public class CustomOAuth2Filter implements Filter {
 
 	private final String clientId;
@@ -41,7 +55,7 @@ public class CustomOAuth2Filter implements Filter {
 		HttpSession session = httpRequest.getSession(false);
 
 		// Check if user is already authenticated
-		if (session != null && session.getAttribute("user") != null) {
+		if (session != null && session.getAttribute("SPRING_SECURITY_CONTEXT") != null) {
 			chain.doFilter(request, response);
 			return;
 		}
@@ -49,8 +63,7 @@ public class CustomOAuth2Filter implements Filter {
 		// Check for OAuth2 callback with authorization code
 		String code = httpRequest.getParameter("code");
 		if (code != null) {
-			handleOAuthCallback(httpRequest, httpResponse, code); // Pass the code to the method
-			return;
+			handleOAuthCallback(httpRequest, httpResponse, code);
 		} else {
 			// Redirect to authorization endpoint
 			redirectToAuthorizationEndpoint(httpRequest, httpResponse);
@@ -63,51 +76,99 @@ public class CustomOAuth2Filter implements Filter {
 		String state = httpRequest.getParameter("state");
 		String savedState = session != null ? (String) session.getAttribute("oauthState") : null;
 
-		// Validate state parameter
-		if (savedState == null || !savedState.equals(state)) {
-			httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid state parameter");
-			return;
-		}
-
-		// Exchange code for access token
-		String redirectUri = httpRequest.getRequestURL().toString();
-		String tokenResponse;
 		try {
-			tokenResponse = exchangeCodeForToken(code, redirectUri);
-		} catch (IOException e) {
-			httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token exchange failed");
-			return;
+			// Validate state parameter
+			if (savedState == null || !savedState.equals(state)) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=invalid_state");
+				return;
+			}
+
+			String tokenResponse = exchangeCodeForToken(code, buildRedirectUrl(httpRequest));
+			String accessToken = parseAccessToken(tokenResponse);
+
+			if (accessToken == null) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=token_failure");
+				return;
+			}
+
+			// Get user info
+			String userInfo = getUserInfo(accessToken);
+			String username = parseUsername(userInfo);
+
+			if (username == null) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=user_info_failure");
+				return;
+			}
+
+			// Load user data
+			try {
+				DbAuthModule.loadUserData(username);
+			} catch (PathNotFoundException | AccessDeniedException e) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=access_denied");
+				return;
+			} catch (ItemExistsException | DatabaseException e) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=database_error");
+				return;
+			}
+
+			// Retrieve user authorities
+			Set<GrantedAuthority> authorities = new HashSet<>();
+			try {
+				List<String> roles = OKMAuth.getInstance().getRoles(null);
+				for (String role : roles) {
+					authorities.add(new SimpleGrantedAuthority(role));
+				}
+			} catch (Exception e) {
+				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=role_retrieval_failed");
+				return;
+			}
+
+			// Create authentication token
+			User principal = new User(
+				username,
+				"",
+				true, true, true, true,
+				authorities
+			);
+
+			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+				principal,
+				null,
+				authorities
+			);
+
+			// Add request details
+			authentication.setDetails(new WebAuthenticationDetails(httpRequest));
+
+			// Set security context
+			SecurityContextHolder.clearContext();
+			SecurityContext context = SecurityContextHolder.createEmptyContext();
+			context.setAuthentication(authentication);
+			SecurityContextHolder.setContext(context);
+
+			// Create new session and invalidate old one
+			session = httpRequest.getSession(true);
+			session.setAttribute("SPRING_SECURITY_CONTEXT", context);
+			session.removeAttribute("oauthState");
+			session.setMaxInactiveInterval(1800); // 30 minutes
+
+			// Redirect to original URL or root
+			String redirectUrl = "/";
+			if (session.getAttribute("ORIGINAL_REQUEST") != null) {
+				redirectUrl = (String) session.getAttribute("ORIGINAL_REQUEST");
+				session.removeAttribute("ORIGINAL_REQUEST");
+			}
+
+			httpResponse.sendRedirect(httpRequest.getContextPath() + redirectUrl);
+
+		} catch (Exception e) {
+			System.out.println("Exception occurred: " + e.getMessage());
+			SecurityContextHolder.clearContext();
+			if (session != null) {
+				session.invalidate();
+			}
+			httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=authentication_failed");
 		}
-
-		String accessToken = parseAccessToken(tokenResponse);
-		if (accessToken == null) {
-			httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token response");
-			return;
-		}
-
-		// Retrieve user info
-		String userInfo;
-		try {
-			userInfo = getUserInfo(accessToken);
-		} catch (IOException e) {
-			httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Failed to fetch user info");
-			return;
-		}
-
-		String username = parseUsername(userInfo);
-		if (username == null) {
-			httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid user info");
-			return;
-		}
-
-		// Create new session and store user
-		session = httpRequest.getSession();
-		session.setAttribute("user", username);
-		session.removeAttribute("oauthState");
-
-		// Redirect to original URL without OAuth2 parameters
-		String redirectUrl = buildRedirectUrl(httpRequest);
-		httpResponse.sendRedirect(redirectUrl);
 	}
 
 	private String exchangeCodeForToken(String code, String redirectUri) throws IOException {
@@ -178,7 +239,7 @@ public class CustomOAuth2Filter implements Filter {
 
 	private void redirectToAuthorizationEndpoint(HttpServletRequest httpRequest, HttpServletResponse httpResponse)
 		throws IOException {
-		String redirectUri = httpRequest.getRequestURL().toString();
+		String redirectUri = buildRedirectUrl(httpRequest);
 		String state = generateState();
 
 		HttpSession session = httpRequest.getSession();

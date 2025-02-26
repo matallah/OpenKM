@@ -98,7 +98,7 @@
   <!-- Custom OAuth2 Filter -->
   <beans:bean id="customOAuth2Filter" class="com.openkm.core.CustomOAuth2Filter">
     <beans:constructor-arg value="OpenKM"/>
-    <beans:constructor-arg value="ZFB1qARH2EGhQw2VlxfURUxLntjRBrBI"/>
+    <beans:constructor-arg value="mMU07YKX8D5F3Dsdf6L6Lh7NOSAaSaIT"/>
     <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/auth"/>
     <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/token"/>
     <beans:constructor-arg value="http://localhost:8180/realms/GUH/protocol/openid-connect/userinfo"/>
