@@ -2,6 +2,7 @@ package com.openkm.core;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
@@ -9,13 +10,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.*;
 
 import com.openkm.api.OKMAuth;
-import com.openkm.core.AccessDeniedException;
-import com.openkm.core.DatabaseException;
-import com.openkm.core.ItemExistsException;
-import com.openkm.core.PathNotFoundException;
+import com.openkm.api.OKMUserConfig;
+import com.openkm.dao.bean.UserConfig;
 import com.openkm.module.db.DbAuthModule;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -63,14 +63,16 @@ public class CustomOAuth2Filter implements Filter {
 		// Check for OAuth2 callback with authorization code
 		String code = httpRequest.getParameter("code");
 		if (code != null) {
-			handleOAuthCallback(httpRequest, httpResponse, code);
+			CustomHttpServletRequestWrapper requestWrapper = handleOAuthCallback(httpRequest, httpResponse, code);
+			// Continue the filter chain with the wrapped request
+			chain.doFilter(requestWrapper, response);
 		} else {
 			// Redirect to authorization endpoint
 			redirectToAuthorizationEndpoint(httpRequest, httpResponse);
 		}
 	}
 
-	private void handleOAuthCallback(HttpServletRequest httpRequest, HttpServletResponse httpResponse, String code)
+	private CustomHttpServletRequestWrapper handleOAuthCallback(HttpServletRequest httpRequest, HttpServletResponse httpResponse, String code)
 		throws IOException {
 		HttpSession session = httpRequest.getSession(false);
 		String state = httpRequest.getParameter("state");
@@ -80,7 +82,7 @@ public class CustomOAuth2Filter implements Filter {
 			// Validate state parameter
 			if (savedState == null || !savedState.equals(state)) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=invalid_state");
-				return;
+				return null;
 			}
 
 			String tokenResponse = exchangeCodeForToken(code, buildRedirectUrl(httpRequest));
@@ -88,7 +90,7 @@ public class CustomOAuth2Filter implements Filter {
 
 			if (accessToken == null) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=token_failure");
-				return;
+				return null;
 			}
 
 			// Get user info
@@ -97,7 +99,7 @@ public class CustomOAuth2Filter implements Filter {
 
 			if (username == null) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=user_info_failure");
-				return;
+				return null;
 			}
 
 			// Load user data
@@ -105,10 +107,10 @@ public class CustomOAuth2Filter implements Filter {
 				DbAuthModule.loadUserData(username);
 			} catch (PathNotFoundException | AccessDeniedException e) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=access_denied");
-				return;
+				return null;
 			} catch (ItemExistsException | DatabaseException e) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=database_error");
-				return;
+				return null;
 			}
 
 			// Retrieve user authorities
@@ -120,7 +122,7 @@ public class CustomOAuth2Filter implements Filter {
 				}
 			} catch (Exception e) {
 				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=role_retrieval_failed");
-				return;
+				return null;
 			}
 
 			// Create authentication token
@@ -151,15 +153,15 @@ public class CustomOAuth2Filter implements Filter {
 			session.setAttribute("SPRING_SECURITY_CONTEXT", context);
 			session.removeAttribute("oauthState");
 			session.setMaxInactiveInterval(1800); // 30 minutes
+			// Wrap the request to override getRemoteUser()
+			CustomHttpServletRequestWrapper requestWrapper = new CustomHttpServletRequestWrapper(httpRequest, username);
 
-			// Redirect to original URL or root
-			String redirectUrl = "/";
-			if (session.getAttribute("ORIGINAL_REQUEST") != null) {
-				redirectUrl = (String) session.getAttribute("ORIGINAL_REQUEST");
-				session.removeAttribute("ORIGINAL_REQUEST");
-			}
+			// Retrieve and set UserConfig in session
+			UserConfig userConfig = OKMUserConfig.getInstance().getConfig(null);
+			session.setAttribute("userConfig", userConfig);
+			System.out.println(userConfig);
 
-			httpResponse.sendRedirect(httpRequest.getContextPath() + redirectUrl);
+			return requestWrapper;
 
 		} catch (Exception e) {
 			System.out.println("Exception occurred: " + e.getMessage());
@@ -169,6 +171,7 @@ public class CustomOAuth2Filter implements Filter {
 			}
 			httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=authentication_failed");
 		}
+		return null;
 	}
 
 	private String exchangeCodeForToken(String code, String redirectUri) throws IOException {
@@ -284,5 +287,39 @@ public class CustomOAuth2Filter implements Filter {
 	@Override
 	public void destroy() {
 		// Cleanup logic if needed
+	}
+
+	// Custom request wrapper to override getRemoteUser()
+	private static class CustomHttpServletRequestWrapper extends HttpServletRequestWrapper {
+		private final String remoteUser;
+
+		public CustomHttpServletRequestWrapper(HttpServletRequest request, String remoteUser) {
+			super(request);
+			this.remoteUser = remoteUser;
+		}
+
+		@Override
+		public String getRemoteUser() {
+			return remoteUser;
+		}
+
+		@Override
+		public Principal getUserPrincipal() {
+			return new UserPrincipal(remoteUser);
+		}
+	}
+
+	// Custom Principal implementation
+	private static class UserPrincipal implements Principal {
+		private final String name;
+
+		public UserPrincipal(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
 	}
 }
