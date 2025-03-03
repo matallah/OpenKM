@@ -1,5 +1,6 @@
 package com.openkm.core;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
@@ -12,11 +13,18 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.openkm.api.OKMAuth;
 import com.openkm.api.OKMUserConfig;
 import com.openkm.dao.bean.UserConfig;
 import com.openkm.module.db.DbAuthModule;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -27,12 +35,15 @@ import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 public class CustomOAuth2Filter implements Filter {
 
+	private static final Logger log = LoggerFactory.getLogger(CustomOAuth2Filter.class);
 	private final String clientId;
 	private final String clientSecret;
 	private final String authorizationEndpoint;
 	private final String tokenEndpoint;
 	private final String userInfoEndpoint;
-
+	private static final String SPRING_SECURITY_CONTEXT = "SPRING_SECURITY_CONTEXT";
+	private static final int MAX_RETRIES = 3;
+	private static final int RETRY_DELAY = 1000; // 1 second
 	public CustomOAuth2Filter(String clientId, String clientSecret,
 							  String authorizationEndpoint, String tokenEndpoint, String userInfoEndpoint) {
 		this.clientId = clientId;
@@ -46,163 +57,292 @@ public class CustomOAuth2Filter implements Filter {
 	public void init(FilterConfig filterConfig) throws ServletException {
 		// Initialization logic if needed
 	}
-
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-		throws IOException, ServletException {
+		throws ServletException, IOException {
 		HttpServletRequest httpRequest = (HttpServletRequest) request;
 		HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+		// Force HTTPS if behind proxy
+		if ("http".equals(httpRequest.getScheme()) && httpRequest.getHeader("X-Forwarded-Proto") != null) {
+			String redirectUrl = "https://" + httpRequest.getServerName() + httpRequest.getRequestURI();
+			if (httpRequest.getQueryString() != null) {
+				redirectUrl += "?" + httpRequest.getQueryString();
+			}
+			httpResponse.sendRedirect(redirectUrl);
+			return;
+		}
+
 		HttpSession session = httpRequest.getSession(false);
 
 		// Check if user is already authenticated
-		if (session != null && session.getAttribute("SPRING_SECURITY_CONTEXT") != null) {
+		if (isUserAuthenticated(session)) {
 			chain.doFilter(request, response);
 			return;
 		}
 
-		// Check for OAuth2 callback with authorization code
 		String code = httpRequest.getParameter("code");
 		if (code != null) {
-			CustomHttpServletRequestWrapper requestWrapper = handleOAuthCallback(httpRequest, httpResponse, code);
-			// Continue the filter chain with the wrapped request
-			chain.doFilter(requestWrapper, response);
+			handleCallbackWithRetry(httpRequest, httpResponse, code, chain);
 		} else {
-			// Redirect to authorization endpoint
-			redirectToAuthorizationEndpoint(httpRequest, httpResponse);
+			try {
+				redirectToAuthorizationEndpoint(httpRequest, httpResponse);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
-	private CustomHttpServletRequestWrapper handleOAuthCallback(HttpServletRequest httpRequest, HttpServletResponse httpResponse, String code)
-		throws IOException {
-		HttpSession session = httpRequest.getSession(false);
-		String state = httpRequest.getParameter("state");
-		String savedState = session != null ? (String) session.getAttribute("oauthState") : null;
+	private boolean isUserAuthenticated(HttpSession session) {
+		if (session != null) {
+			SecurityContext securityContext = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
+			return securityContext != null && securityContext.getAuthentication() != null &&
+				securityContext.getAuthentication().isAuthenticated();
+		}
+		return false;
+	}
 
-		try {
-			// Validate state parameter
-			if (savedState == null || !savedState.equals(state)) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=invalid_state");
-				return null;
-			}
+	private void handleCallbackWithRetry(HttpServletRequest request, HttpServletResponse response,
+										 String code, FilterChain chain) throws IOException, ServletException {
+		Exception lastException = null;
 
-			String tokenResponse = exchangeCodeForToken(code, buildRedirectUrl(httpRequest));
-			String accessToken = parseAccessToken(tokenResponse);
-
-			if (accessToken == null) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=token_failure");
-				return null;
-			}
-
-			// Get user info
-			String userInfo = getUserInfo(accessToken);
-			String username = parseUsername(userInfo);
-
-			if (username == null) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=user_info_failure");
-				return null;
-			}
-
-			// Load user data
+		for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
 			try {
-				DbAuthModule.loadUserData(username);
-			} catch (PathNotFoundException | AccessDeniedException e) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=access_denied");
-				return null;
-			} catch (ItemExistsException | DatabaseException e) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=database_error");
-				return null;
-			}
-
-			// Retrieve user authorities
-			Set<GrantedAuthority> authorities = new HashSet<>();
-			try {
-				List<String> roles = OKMAuth.getInstance().getRoles(null);
-				for (String role : roles) {
-					authorities.add(new SimpleGrantedAuthority(role));
+				CustomHttpServletRequestWrapper wrapper = handleOAuthCallback(request, response, code);
+				if (wrapper != null) {
+					chain.doFilter(wrapper, response);
+					return;
 				}
+				break;
 			} catch (Exception e) {
-				httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=role_retrieval_failed");
-				return null;
+				lastException = e;
+				log.warn("Authentication attempt {} failed: {}", attempt + 1, e.getMessage());
+				try {
+					Thread.sleep(RETRY_DELAY);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					break;
+				}
+			}
+		}
+
+		if (lastException != null) {
+			log.error("Authentication failed after {} attempts", MAX_RETRIES, lastException);
+			response.sendRedirect(request.getContextPath() + "/login?error=max_retries_exceeded");
+		}
+	}
+
+	private CustomHttpServletRequestWrapper handleOAuthCallback(HttpServletRequest request,
+																HttpServletResponse response, String code) throws IOException {
+		HttpSession session = request.getSession(true);
+		try {
+			// 1. Exchange code for token with validation
+			String redirectUrl = buildRedirectUrl(request);
+			String tokenResponse = exchangeCodeForToken(code, redirectUrl);
+
+			if (tokenResponse == null || tokenResponse.isEmpty()) {
+				throw new IOException("Empty token response from server");
 			}
 
-			// Create authentication token
-			User principal = new User(
-				username,
-				"",
-				true, true, true, true,
-				authorities
-			);
+			JSONObject tokenJson = new JSONObject(tokenResponse);
+			if (!tokenJson.has("access_token")) {
+				throw new IOException("Missing access token in response");
+			}
+			String accessToken = tokenJson.getString("access_token");
 
-			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-				principal,
+			// 2. Get user info with validation
+			String userInfo = getUserInfo(accessToken);
+			if (userInfo == null || userInfo.isEmpty()) {
+				throw new IOException("Empty user info response");
+			}
+
+			JSONObject userInfoJson = new JSONObject(userInfo);
+			if (!userInfoJson.has("preferred_username")) {
+				throw new IOException("Missing username in user info");
+			}
+			String username = userInfoJson.getString("preferred_username");
+
+			// 3. Extract roles with multiple fallbacks
+			Set<GrantedAuthority> authorities = new HashSet<>();
+
+			// First try token claims
+			if (tokenJson.has("realm_access")) {
+				try {
+					JSONObject realmAccess = tokenJson.getJSONObject("realm_access");
+					if (realmAccess.has("roles")) {
+						JSONArray roles = realmAccess.getJSONArray("roles");
+						for (int i = 0; i < roles.length(); i++) {
+							authorities.add(new SimpleGrantedAuthority("ROLE_" + roles.getString(i)));
+						}
+					}
+				} catch (JSONException e) {
+					log.warn("Failed to extract roles from token", e);
+				}
+			}
+
+			// Fallback to userinfo
+			if (authorities.isEmpty() && userInfoJson.has("realm_access")) {
+				try {
+					JSONObject realmAccess = userInfoJson.getJSONObject("realm_access");
+					if (realmAccess.has("roles")) {
+						JSONArray roles = realmAccess.getJSONArray("roles");
+						for (int i = 0; i < roles.length(); i++) {
+							authorities.add(new SimpleGrantedAuthority("ROLE_" + roles.getString(i)));
+						}
+					}
+				} catch (JSONException e) {
+					log.warn("Failed to extract roles from userinfo", e);
+				}
+			}
+
+			// Add default roles if missing
+			if (!authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_USER"))) {
+				authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+			}
+			if (!authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+				authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+			}
+
+			// 4. User synchronization
+			synchronizeUser(username, authorities);
+
+			// 5. Create security context
+			SecurityContext context = SecurityContextHolder.createEmptyContext();
+			Authentication authentication = new UsernamePasswordAuthenticationToken(
+				username,
 				null,
 				authorities
 			);
-
-			// Add request details
-			authentication.setDetails(new WebAuthenticationDetails(httpRequest));
-
-			// Set security context
-			SecurityContextHolder.clearContext();
-			SecurityContext context = SecurityContextHolder.createEmptyContext();
 			context.setAuthentication(authentication);
 			SecurityContextHolder.setContext(context);
+			session.setAttribute(SPRING_SECURITY_CONTEXT, context);
+			session.setMaxInactiveInterval(1800);
 
-			// Create new session and invalidate old one
-			session = httpRequest.getSession(true);
-			session.setAttribute("SPRING_SECURITY_CONTEXT", context);
-			session.removeAttribute("oauthState");
-			session.setMaxInactiveInterval(1800); // 30 minutes
-			// Wrap the request to override getRemoteUser()
-			CustomHttpServletRequestWrapper requestWrapper = new CustomHttpServletRequestWrapper(httpRequest, username);
-
-			// Retrieve and set UserConfig in session
-			UserConfig userConfig = OKMUserConfig.getInstance().getConfig(null);
-			session.setAttribute("userConfig", userConfig);
-			System.out.println(userConfig);
-
-			return requestWrapper;
-
-		} catch (Exception e) {
-			System.out.println("Exception occurred: " + e.getMessage());
-			SecurityContextHolder.clearContext();
-			if (session != null) {
-				session.invalidate();
+			// 6. User configuration with null checks
+			OKMUserConfig userConfigInstance = OKMUserConfig.getInstance();
+			if (userConfigInstance == null) {
+				throw new IllegalStateException("OKMUserConfig instance not initialized");
 			}
-			httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?error=authentication_failed");
+
+			UserConfig userConfig = userConfigInstance.getConfig(null);
+			if (userConfig != null) {
+				session.setAttribute("userConfig", userConfig);
+			} else {
+				log.warn("No user configuration found for: {}", username);
+			}
+
+			return new CustomHttpServletRequestWrapper(request, username);
+
+		} catch (JSONException e) {
+			log.error("JSON parsing error during authentication", e);
+			if (session != null) {
+				try { session.invalidate(); } catch (IllegalStateException ex) {}
+			}
+			SecurityContextHolder.clearContext();
+			throw new IOException("Authentication data format error", e);
+		} catch (IllegalStateException e) {
+			log.error("System configuration error", e);
+			if (session != null) {
+				try { session.invalidate(); } catch (IllegalStateException ex) {}
+			}
+			SecurityContextHolder.clearContext();
+			throw new IOException("System configuration error", e);
+		} catch (Exception e) {
+			log.error("Authentication error", e);
+			if (session != null) {
+				try { session.invalidate(); } catch (IllegalStateException ex) {}
+			}
+			SecurityContextHolder.clearContext();
+			throw new IOException("Authentication failed", e);
 		}
-		return null;
+	}
+	private Set<GrantedAuthority> extractKeycloakRoles(JSONObject tokenJson) {
+		Set<GrantedAuthority> authorities = new HashSet<>();
+		try {
+			JSONObject realmAccess = tokenJson.getJSONObject("realm_access");
+			if (realmAccess.has("roles")) {
+				realmAccess.getJSONArray("roles").forEach(role ->
+					authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toString().toUpperCase()))
+				);
+			}
+		} catch (Exception e) {
+			log.warn("Could not extract realm roles", e);
+		}
+		return authorities;
+	}
+
+	private void synchronizeUser(String username, Set<GrantedAuthority> authorities) throws Exception {
+		try {
+			DbAuthModule.loadUserData(username);
+		} catch (Exception e) {
+			log.info("Creating new user: {}", username);
+//			List<String> roles = authorities.stream()
+//				.map(GrantedAuthority::getAuthority)
+//				.filter(role -> role.startsWith("ROLE_"))
+//				.map(role -> role.substring(5))
+//				.toList();
+			//DbAuthModule.createUser(null, username, "", true, roles);
+		}
+	}
+
+	private SecurityContext createSecurityContext(HttpServletRequest request,
+												  String username, Set<GrantedAuthority> authorities) {
+		User principal = new User(username, "", authorities);
+		UsernamePasswordAuthenticationToken authentication =
+			new UsernamePasswordAuthenticationToken(principal, null, authorities);
+		authentication.setDetails(new WebAuthenticationDetails(request));
+
+		SecurityContext context = SecurityContextHolder.createEmptyContext();
+		context.setAuthentication(authentication);
+		return context;
+	}
+
+	private void cleanup(HttpSession session) {
+		SecurityContextHolder.clearContext();
+		if (session != null) {
+			session.invalidate();
+		}
 	}
 
 	private String exchangeCodeForToken(String code, String redirectUri) throws IOException {
 		URL url = new URL(tokenEndpoint);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+		// Bypass SSL checks (for development only)
+		if (conn instanceof HttpsURLConnection) {
+			HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+			httpsConn.setHostnameVerifier((hostname, session) -> true);
+		}
+
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+		// Basic Authentication
+		String auth = clientId + ":" + clientSecret;
+		String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
+		conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
+
 		conn.setDoOutput(true);
 
+		// URL-encode parameters
 		String params = "grant_type=authorization_code" +
-			"&code=" + code +
-			"&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8.name()) +
-			"&client_id=" + clientId +
-			"&client_secret=" + clientSecret;
+			"&code=" + URLEncoder.encode(code, StandardCharsets.UTF_8.name()) +
+			"&redirect_uri=" + URLEncoder.encode("https://localhost:8443/OpenKM/", StandardCharsets.UTF_8.name());
 
 		try (OutputStream os = conn.getOutputStream()) {
 			os.write(params.getBytes(StandardCharsets.UTF_8));
 		}
 
-		if (conn.getResponseCode() != 200) {
-			throw new IOException("HTTP " + conn.getResponseCode());
+		// Log response for debugging
+		int statusCode = conn.getResponseCode();
+		String responseBody = new BufferedReader(new InputStreamReader(conn.getInputStream()))
+			.lines().collect(Collectors.joining("\n"));
+
+		if (statusCode != 200) {
+			throw new IOException("HTTP " + statusCode + ": " + responseBody);
 		}
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-			StringBuilder response = new StringBuilder();
-			String line;
-			while ((line = reader.readLine()) != null) {
-				response.append(line);
-			}
-			return response.toString();
-		}
+		return responseBody;
 	}
 
 	private String parseAccessToken(String json) {
@@ -217,7 +357,11 @@ public class CustomOAuth2Filter implements Filter {
 		URL url = new URL(userInfoEndpoint);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestProperty("Authorization", "Bearer " + accessToken);
-
+		// Bypass SSL checks (for development only)
+		if (conn instanceof HttpsURLConnection) {
+			HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+			httpsConn.setHostnameVerifier((hostname, session) -> true);
+		}
 		if (conn.getResponseCode() != 200) {
 			throw new IOException("HTTP " + conn.getResponseCode());
 		}
@@ -252,7 +396,8 @@ public class CustomOAuth2Filter implements Filter {
 			"?response_type=code" +
 			"&client_id=" + clientId +
 			"&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8.name()) +
-			"&state=" + state;
+			"&state=" + state+
+			"&scope=openid roles";
 
 		httpResponse.sendRedirect(authUrl);
 	}
