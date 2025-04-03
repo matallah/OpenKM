@@ -76,6 +76,8 @@ All this already configured you can import it from the json file below
   "editUsernameAllowed": false,
   "bruteForceProtected": false,
   "permanentLockout": false,
+  "maxTemporaryLockouts": 0,
+  "bruteForceStrategy": "MULTIPLE",
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
   "waitIncrementSeconds": 60,
@@ -337,7 +339,26 @@ All this already configured you can import it from the json file below
           "attributes": {}
         }
       ],
-      "OpenKM": [],
+      "OpenKM": [
+        {
+          "id": "66de3ff1-788f-4f28-b120-bdd112ccf1f7",
+          "name": "ROLE_USER",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "4ec3a53d-8563-429f-8805-c19699a3a7a6",
+          "attributes": {}
+        },
+        {
+          "id": "301de2e3-eac9-4713-9844-543204b556d7",
+          "name": "ROLE_ADMIN",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "4ec3a53d-8563-429f-8805-c19699a3a7a6",
+          "attributes": {}
+        }
+      ],
       "security-admin-console": [],
       "admin-cli": [],
       "account-console": [],
@@ -462,10 +483,11 @@ All this already configured you can import it from the json file below
   "otpPolicyPeriod": 30,
   "otpPolicyCodeReusable": false,
   "otpSupportedApplications": [
-    "totpAppGoogleName",
     "totpAppFreeOTPName",
+    "totpAppGoogleName",
     "totpAppMicrosoftAuthenticatorName"
   ],
+  "localizationTexts": {},
   "webAuthnPolicyRpEntityName": "keycloak",
   "webAuthnPolicySignatureAlgorithms": [
     "ES256"
@@ -478,6 +500,7 @@ All this already configured you can import it from the json file below
   "webAuthnPolicyCreateTimeout": 0,
   "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyAcceptableAaguids": [],
+  "webAuthnPolicyExtraOrigins": [],
   "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
   "webAuthnPolicyPasswordlessSignatureAlgorithms": [
     "ES256"
@@ -490,6 +513,7 @@ All this already configured you can import it from the json file below
   "webAuthnPolicyPasswordlessCreateTimeout": 0,
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+  "webAuthnPolicyPasswordlessExtraOrigins": [],
   "scopeMappings": [
     {
       "clientScope": "offline_access",
@@ -515,8 +539,8 @@ All this already configured you can import it from the json file below
       "clientId": "OpenKM",
       "name": "",
       "description": "",
-      "rootUrl": "http://localhost:8080/OpenKM",
-      "adminUrl": "http://localhost:8080/OpenKM",
+      "rootUrl": "https://localhost:8443/OpenKM",
+      "adminUrl": "https://localhost:8443/OpenKM",
       "baseUrl": "",
       "surrogateAuthRequired": false,
       "enabled": true,
@@ -524,10 +548,11 @@ All this already configured you can import it from the json file below
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "http://localhost:8080/OpenKM/*"
+        "https://localhost:8443/OpenKM/*",
+        "https://localhost:8443/*"
       ],
       "webOrigins": [
-        "http://localhost:8080"
+        "https://localhost:8443"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -540,12 +565,15 @@ All this already configured you can import it from the json file below
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
-        "client.secret.creation.time": "1740310013",
+        "client.secret.creation.time": "1741021628",
         "login_theme": "keycloak",
+        "post.logout.redirect.uris": "+",
+        "frontchannel.logout.session.required": "true",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
         "tls-client-certificate-bound-access-tokens": "false",
+        "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
         "client_credentials.use_refresh_token": "false",
@@ -638,6 +666,7 @@ All this already configured you can import it from the json file below
         "openid",
         "roles",
         "profile",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -672,6 +701,7 @@ All this already configured you can import it from the json file below
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
+        "realm_client": "false",
         "post.logout.redirect.uris": "+"
       },
       "authenticationFlowBindingOverrides": {},
@@ -682,6 +712,7 @@ All this already configured you can import it from the json file below
         "acr",
         "roles",
         "profile",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -716,6 +747,7 @@ All this already configured you can import it from the json file below
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
+        "realm_client": "false",
         "post.logout.redirect.uris": "+",
         "pkce.code.challenge.method": "S256"
       },
@@ -737,6 +769,7 @@ All this already configured you can import it from the json file below
         "acr",
         "roles",
         "profile",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -766,15 +799,20 @@ All this already configured you can import it from the json file below
       "publicClient": true,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
-      "attributes": {},
+      "attributes": {
+        "realm_client": "false",
+        "client.use.lightweight.access.token.enabled": "true",
+        "post.logout.redirect.uris": "+"
+      },
       "authenticationFlowBindingOverrides": {},
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": 0,
       "defaultClientScopes": [
         "web-origins",
         "acr",
         "roles",
         "profile",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -804,7 +842,10 @@ All this already configured you can import it from the json file below
       "publicClient": false,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
-      "attributes": {},
+      "attributes": {
+        "realm_client": "true",
+        "post.logout.redirect.uris": "+"
+      },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": false,
       "nodeReRegistrationTimeout": 0,
@@ -842,7 +883,10 @@ All this already configured you can import it from the json file below
       "publicClient": false,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
-      "attributes": {},
+      "attributes": {
+        "realm_client": "true",
+        "post.logout.redirect.uris": "+"
+      },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": false,
       "nodeReRegistrationTimeout": 0,
@@ -887,11 +931,13 @@ All this already configured you can import it from the json file below
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
+        "realm_client": "false",
+        "client.use.lightweight.access.token.enabled": "true",
         "post.logout.redirect.uris": "+",
         "pkce.code.challenge.method": "S256"
       },
       "authenticationFlowBindingOverrides": {},
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": 0,
       "protocolMappers": [
         {
@@ -915,6 +961,7 @@ All this already configured you can import it from the json file below
         "acr",
         "roles",
         "profile",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -993,7 +1040,8 @@ All this already configured you can import it from the json file below
           "consentRequired": false,
           "config": {
             "id.token.claim": "true",
-            "access.token.claim": "true"
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
           }
         }
       ]
@@ -1028,6 +1076,245 @@ All this already configured you can import it from the json file below
             "single": "false",
             "attribute.nameformat": "Basic",
             "attribute.name": "Role"
+          }
+        }
+      ]
+    },
+    {
+      "id": "55bb58c4-a977-4646-90d7-565852b25f86",
+      "name": "service_account",
+      "description": "Specific scope for a client enabled for service accounts",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "id": "8a77cb5b-16fa-4414-b3fd-baa5a34eecdf",
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "23485e72-539c-4489-b27b-1e35074ea66c",
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "bb636584-ce58-40b1-8303-37939c9e7d1f",
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7a02c9b7-e8f9-41c3-8f23-be163d440cf4",
+      "name": "openid",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "6368e2ef-eeef-4e7c-96fd-e0b055b0d824",
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "cdeca6cf-a73e-4376-97f3-bc65d378bdcd",
+          "name": "profile",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "profile",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "profile",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "e9bbd8aa-4717-4443-bfb1-d1394337b20f",
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "id": "d6a7b9b3-1a97-4f93-86a7-86e5ee4fbfd3",
+          "name": "nickname",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "nickname",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "nickname",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "55a3a1d6-9c7b-410c-b826-eba8c36108a0",
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "dcc614dd-adb4-49fe-907b-6893f7afc3cc",
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "id": "760ab0bf-82a1-4d52-8f75-b04ec636c9bf",
+      "name": "microprofile-jwt",
+      "description": "Microprofile - JWT built-in scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "id": "7b177b76-663c-412d-a2a4-912b66636e3c",
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "user.attribute": "foo",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "b1a2e288-9485-4f54-8f62-a060e43abdaa",
+          "name": "upn",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "upn",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "id": "5aaea301-803d-4974-bfca-d479c5117859",
+      "name": "basic",
+      "description": "OpenID Connect scope for add all basic claims to the token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "id": "29943c86-ca9c-4fa3-9ed6-c28e5b0975fa",
+          "name": "auth_time",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "AUTH_TIME",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "auth_time",
+            "jsonType.label": "long"
+          }
+        },
+        {
+          "id": "7e71bb4d-2225-4755-a5d9-2058bd246c50",
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "access.token.claim": "true"
           }
         }
       ]
@@ -1080,77 +1367,6 @@ All this already configured you can import it from the json file below
             "user.attribute.region": "region",
             "access.token.claim": "true",
             "user.attribute.locality": "locality"
-          }
-        }
-      ]
-    },
-    {
-      "id": "7a02c9b7-e8f9-41c3-8f23-be163d440cf4",
-      "name": "openid",
-      "description": "",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true",
-        "gui.order": "",
-        "consent.screen.text": ""
-      },
-      "protocolMappers": [
-        {
-          "id": "cdeca6cf-a73e-4376-97f3-bc65d378bdcd",
-          "name": "profile",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "userinfo.token.claim": "true",
-            "user.attribute": "profile",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "profile",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "e9bbd8aa-4717-4443-bfb1-d1394337b20f",
-          "name": "full name",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-full-name-mapper",
-          "consentRequired": false,
-          "config": {
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "id": "d6a7b9b3-1a97-4f93-86a7-86e5ee4fbfd3",
-          "name": "nickname",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "userinfo.token.claim": "true",
-            "user.attribute": "nickname",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "nickname",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "dcc614dd-adb4-49fe-907b-6893f7afc3cc",
-          "name": "username",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-property-mapper",
-          "consentRequired": false,
-          "config": {
-            "userinfo.token.claim": "true",
-            "user.attribute": "username",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "preferred_username",
-            "jsonType.label": "String"
           }
         }
       ]
@@ -1460,48 +1676,6 @@ All this already configured you can import it from the json file below
           }
         }
       ]
-    },
-    {
-      "id": "760ab0bf-82a1-4d52-8f75-b04ec636c9bf",
-      "name": "microprofile-jwt",
-      "description": "Microprofile - JWT built-in scope",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "false"
-      },
-      "protocolMappers": [
-        {
-          "id": "7b177b76-663c-412d-a2a4-912b66636e3c",
-          "name": "groups",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "consentRequired": false,
-          "config": {
-            "multivalued": "true",
-            "user.attribute": "foo",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "groups",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "b1a2e288-9485-4f54-8f62-a060e43abdaa",
-          "name": "upn",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-property-mapper",
-          "consentRequired": false,
-          "config": {
-            "userinfo.token.claim": "true",
-            "user.attribute": "username",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "upn",
-            "jsonType.label": "String"
-          }
-        }
-      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -1511,7 +1685,8 @@ All this already configured you can import it from the json file below
     "roles",
     "web-origins",
     "acr",
-    "openid"
+    "openid",
+    "basic"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
@@ -1522,6 +1697,7 @@ All this already configured you can import it from the json file below
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",
     "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
     "xRobotsTag": "none",
     "xFrameOptions": "SAMEORIGIN",
     "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
@@ -1549,25 +1725,6 @@ All this already configured you can import it from the json file below
         "config": {
           "allow-default-scopes": [
             "true"
-          ]
-        }
-      },
-      {
-        "id": "4f136959-4ecb-4025-ac2c-538ce21519e9",
-        "name": "Allowed Protocol Mapper Types",
-        "providerId": "allowed-protocol-mappers",
-        "subType": "anonymous",
-        "subComponents": {},
-        "config": {
-          "allowed-protocol-mapper-types": [
-            "oidc-full-name-mapper",
-            "saml-role-list-mapper",
-            "oidc-sha256-pairwise-sub-mapper",
-            "oidc-usermodel-property-mapper",
-            "oidc-address-mapper",
-            "saml-user-attribute-mapper",
-            "oidc-usermodel-attribute-mapper",
-            "saml-user-property-mapper"
           ]
         }
       },
@@ -1606,14 +1763,14 @@ All this already configured you can import it from the json file below
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-sha256-pairwise-sub-mapper",
-            "saml-user-attribute-mapper",
-            "oidc-usermodel-property-mapper",
-            "oidc-full-name-mapper",
-            "saml-user-property-mapper",
-            "saml-role-list-mapper",
             "oidc-usermodel-attribute-mapper",
-            "oidc-address-mapper"
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-usermodel-property-mapper",
+            "saml-user-property-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-full-name-mapper",
+            "oidc-address-mapper",
+            "saml-role-list-mapper"
           ]
         }
       },
@@ -1644,9 +1801,76 @@ All this already configured you can import it from the json file below
             "200"
           ]
         }
+      },
+      {
+        "id": "4f136959-4ecb-4025-ac2c-538ce21519e9",
+        "name": "Allowed Protocol Mapper Types",
+        "providerId": "allowed-protocol-mappers",
+        "subType": "anonymous",
+        "subComponents": {},
+        "config": {
+          "allowed-protocol-mapper-types": [
+            "saml-role-list-mapper",
+            "oidc-full-name-mapper",
+            "oidc-usermodel-property-mapper",
+            "saml-user-attribute-mapper",
+            "saml-user-property-mapper",
+            "oidc-address-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-usermodel-attribute-mapper"
+          ]
+        }
+      }
+    ],
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "517d6944-befb-47bc-8aeb-cb1ec99a2e8e",
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+          ]
+        }
       }
     ],
     "org.keycloak.keys.KeyProvider": [
+      {
+        "id": "c883eb92-2b9b-456f-8dcd-2c694459bc2e",
+        "name": "hmac-generated-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "HS512"
+          ]
+        }
+      },
+      {
+        "id": "6d99136e-9bcf-450b-afcc-f7feafefa32b",
+        "name": "aes-generated",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ]
+        }
+      },
+      {
+        "id": "7d5bdfb5-8e2f-488f-9946-bc4cd636dbae",
+        "name": "rsa-generated",
+        "providerId": "rsa-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ]
+        }
+      },
       {
         "id": "fc45931f-5775-4974-9098-8949df5026b4",
         "name": "hmac-generated",
@@ -1672,28 +1896,6 @@ All this already configured you can import it from the json file below
           ],
           "algorithm": [
             "RSA-OAEP"
-          ]
-        }
-      },
-      {
-        "id": "6d99136e-9bcf-450b-afcc-f7feafefa32b",
-        "name": "aes-generated",
-        "providerId": "aes-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
-          ]
-        }
-      },
-      {
-        "id": "7d5bdfb5-8e2f-488f-9946-bc4cd636dbae",
-        "name": "rsa-generated",
-        "providerId": "rsa-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
           ]
         }
       }
@@ -1724,40 +1926,6 @@ All this already configured you can import it from the json file below
           "priority": 20,
           "autheticatorFlow": true,
           "flowAlias": "Verify Existing Account by Re-authentication",
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
-      "id": "b5f7c878-0970-469e-89b2-10133daafd42",
-      "alias": "Authentication Options",
-      "description": "Authentication options.",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": true,
-      "authenticationExecutions": [
-        {
-          "authenticator": "basic-auth",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "basic-auth-otp",
-          "authenticatorFlow": false,
-          "requirement": "DISABLED",
-          "priority": 20,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "auth-spnego",
-          "authenticatorFlow": false,
-          "requirement": "DISABLED",
-          "priority": 30,
-          "autheticatorFlow": false,
           "userSetupAllowed": false
         }
       ]
@@ -2135,32 +2303,6 @@ All this already configured you can import it from the json file below
       ]
     },
     {
-      "id": "06078813-86e2-42f3-a79a-cac0676c8eec",
-      "alias": "http challenge",
-      "description": "An authentication flow based on challenge-response HTTP Authentication Schemes",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": true,
-      "authenticationExecutions": [
-        {
-          "authenticator": "no-cookie-redirect",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticatorFlow": true,
-          "requirement": "REQUIRED",
-          "priority": 20,
-          "autheticatorFlow": true,
-          "flowAlias": "Authentication Options",
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
       "id": "c9bf4166-5b8f-46c1-af00-df8ffd357810",
       "alias": "registration",
       "description": "registration flow",
@@ -2192,14 +2334,6 @@ All this already configured you can import it from the json file below
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 20,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "registration-profile-action",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 40,
           "autheticatorFlow": false,
           "userSetupAllowed": false
         },
@@ -2372,6 +2506,15 @@ All this already configured you can import it from the json file below
       "config": {}
     },
     {
+      "alias": "delete_credential",
+      "name": "Delete Credential",
+      "providerId": "delete_credential",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 100,
+      "config": {}
+    },
+    {
       "alias": "update_user_locale",
       "name": "Update User Locale",
       "providerId": "update_user_locale",
@@ -2387,25 +2530,33 @@ All this already configured you can import it from the json file below
   "resetCredentialsFlow": "reset credentials",
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
+  "firstBrokerLoginFlow": "first broker login",
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",
     "cibaExpiresIn": "120",
     "cibaAuthRequestedUserHint": "login_hint",
     "oauth2DeviceCodeLifespan": "600",
+    "clientOfflineSessionMaxLifespan": "0",
     "oauth2DevicePollingInterval": "5",
+    "clientSessionIdleTimeout": "0",
     "parRequestUriLifespan": "60",
+    "clientSessionMaxLifespan": "0",
+    "clientOfflineSessionIdleTimeout": "0",
     "cibaInterval": "5",
     "realmReusableOtpCode": "false"
   },
-  "keycloakVersion": "21.0.0",
+  "keycloakVersion": "26.1.3",
   "userManagedAccessAllowed": false,
+  "organizationsEnabled": false,
+  "verifiableCredentialsEnabled": false,
+  "adminPermissionsEnabled": false,
   "clientProfiles": {
     "profiles": []
   },
   "clientPolicies": {
     "policies": []
   }
-}
+
 ```
 
 ---
@@ -2416,59 +2567,260 @@ All this already configured you can import it from the json file below
 Create a new Java class named `CustomOAuth2Filter` under the package `com.openkm.security`.
 
 ```java
-package com.openkm.security;
+package com.openkm.core;
 
-import org.springframework.security.authentication.AuthenticationManager;
+import javax.net.ssl.HttpsURLConnection;
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.security.Principal;
+import java.util.*;
+import java.util.stream.Collectors;
+import com.openkm.api.OKMUserConfig;
+import com.openkm.dao.bean.UserConfig;
+import com.openkm.module.db.DbAuthModule;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+public class CustomOAuth2Filter implements Filter {
+    private static final Logger log = LoggerFactory.getLogger(CustomOAuth2Filter.class);
+    private final String clientId;
+    private final String clientSecret;
+    private final String authorizationEndpoint;
+    private final String tokenEndpoint;
+    private final String userInfoEndpoint;
+    private static final String SPRING_SECURITY_CONTEXT = "SPRING_SECURITY_CONTEXT";
+    private static final int MAX_RETRIES = 3;
+    private static final int RETRY_DELAY = 1000;
 
-public class CustomOAuth2Filter extends AbstractAuthenticationProcessingFilter {
-
-    public CustomOAuth2Filter(String defaultFilterProcessesUrl, AuthenticationManager authenticationManager) {
-        super(defaultFilterProcessesUrl);
-        setAuthenticationManager(authenticationManager);
+    public CustomOAuth2Filter(String clientId, String clientSecret, String authorizationEndpoint,
+                              String tokenEndpoint, String userInfoEndpoint) {
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.authorizationEndpoint = authorizationEndpoint;
+        this.tokenEndpoint = tokenEndpoint;
+        this.userInfoEndpoint = userInfoEndpoint;
     }
 
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
-            throws AuthenticationException, IOException, ServletException {
-        // Extract token from the request header or parameter
-        String token = request.getHeader("Authorization");
-        if (token == null || token.isEmpty()) {
-            throw new AuthenticationException("No token provided") {};
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        HttpServletRequest req = (HttpServletRequest) request;
+        HttpServletResponse res = (HttpServletResponse) response;
+
+        if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
+            res.sendRedirect("https://" + req.getServerName() + req.getRequestURI() +
+                    (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
+            return;
         }
 
-        // Pass the token to the authentication manager for validation
-        return getAuthenticationManager().authenticate(new OAuth2AuthenticationToken(token));
+        HttpSession session = req.getSession(true);
+
+        if (isAuthenticated(session)) {
+            UserConfig userConfig = (UserConfig) session.getAttribute("userConfig");
+            chain.doFilter(request, response);
+            return;
+        }
+
+        String code = req.getParameter("code");
+        if (code != null) {
+            handleAuthCallbackWithRetry(req, res, code, chain);
+        } else {
+            redirectToAuthEndpoint(req, res);
+        }
     }
 
-    @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
-                                            Authentication authResult) throws IOException, ServletException {
-        super.successfulAuthentication(request, response, chain, authResult);
-        // Proceed with the filter chain after successful authentication
-        chain.doFilter(request, response);
+    private boolean isAuthenticated(HttpSession session) {
+        if (session == null) {
+            log.info("No session found");
+            return false;
+        }
+
+        SecurityContext ctx = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
+        if (ctx == null) {
+            log.info("No SecurityContext in session");
+            return false;
+        }
+
+        Authentication auth = ctx.getAuthentication();
+        if (auth == null) {
+            log.info("No Authentication in SecurityContext");
+            return false;
+        }
+
+        if (!auth.isAuthenticated()) {
+            log.info("Authentication exists but not marked as authenticated");
+            return false;
+        }
+
+        return true;
     }
-}
 
-// Custom Authentication Token Class
-class OAuth2AuthenticationToken extends org.springframework.security.authentication.UsernamePasswordAuthenticationToken {
-    private final String token;
-
-    public OAuth2AuthenticationToken(String token) {
-        super(null, null);
-        this.token = token;
+    private void handleAuthCallbackWithRetry(HttpServletRequest req, HttpServletResponse res,
+                                             String code, FilterChain chain) throws IOException, ServletException {
+        Exception lastError = null;
+        for (int i = 0; i < MAX_RETRIES; i++) {
+            try {
+                chain.doFilter(processOAuthCallback(req, code), res);
+                return;
+            } catch (Exception e) {
+                lastError = e;
+                log.warn("Auth attempt {} failed: {}", i+1, e.getMessage());
+                try { Thread.sleep(RETRY_DELAY); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
+        }
+        log.error("Auth failed after {} attempts", MAX_RETRIES, lastError);
+        res.sendRedirect(req.getContextPath() + "/login?error=max_retries_exceeded");
     }
 
-    public String getToken() {
-        return token;
+    private HttpServletRequest processOAuthCallback(HttpServletRequest req, String code) throws Exception {
+        HttpSession session = req.getSession(true);
+        try {
+            String redirectUri = buildRedirectUrl(req);
+            JSONObject token = new JSONObject(exchangeCodeForToken(code, redirectUri));
+            JSONObject userInfo = new JSONObject(getUserInfo(token.getString("access_token")));
+
+            String username = userInfo.getString("preferred_username");
+            Set<GrantedAuthority> authorities = extractAuthorities(token, userInfo);
+
+            synchronizeUser(username);
+            setupSecurityContext(username, authorities, session, req);
+            configureUserSession(session, username);
+
+            return new AuthRequestWrapper(req, username);
+        } catch (Exception e) {
+            cleanup(session);
+            throw e;
+        }
+    }
+
+    private String exchangeCodeForToken(String code, String redirectUri) throws IOException {
+        HttpURLConnection conn = configureSSL(new URL(tokenEndpoint).openConnection());
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder()
+                .encodeToString((clientId + ":" + clientSecret).getBytes()));
+        conn.setDoOutput(true);
+        if (conn instanceof HttpsURLConnection) {
+            HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+            httpsConn.setHostnameVerifier((hostname, session) -> true);
+        }
+        String params = "grant_type=authorization_code&code=" + URLEncoder.encode(code, "UTF-8") +
+                "&redirect_uri=" + URLEncoder.encode(redirectUri, "UTF-8");
+        conn.getOutputStream().write(params.getBytes());
+        return readResponse(conn);
+    }
+
+    private String getUserInfo(String accessToken) throws IOException {
+        HttpURLConnection conn = configureSSL(new URL(userInfoEndpoint).openConnection());
+        conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+        if (conn instanceof HttpsURLConnection) {
+            HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+            httpsConn.setHostnameVerifier((hostname, session) -> true);
+        }
+        return readResponse(conn);
+    }
+
+    private Set<GrantedAuthority> extractAuthorities(JSONObject token, JSONObject userInfo) {
+        Set<GrantedAuthority> authorities = new HashSet<>();
+        extractRoles(token, authorities);
+        extractRoles(userInfo, authorities);
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        return authorities;
+    }
+
+    private void extractRoles(JSONObject json, Set<GrantedAuthority> authorities) {
+        Optional.ofNullable(json.optJSONObject("realm_access"))
+                .map(ra -> ra.optJSONArray("roles"))
+                .ifPresent(roles -> roles.forEach(r ->
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + r))));
+    }
+
+    private void synchronizeUser(String username) {
+        try {
+            DbAuthModule.loadUserData(username);
+        } catch (Exception e) {
+            log.info("Creating new user: {}", username);
+        }
+    }
+
+    private void setupSecurityContext(String user, Set<GrantedAuthority> authorities,
+                                      HttpSession session, HttpServletRequest req) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(user, null, authorities);
+        auth.setDetails(new WebAuthenticationDetails(req));
+        context.setAuthentication(auth);
+        SecurityContextHolder.setContext(context);
+        session.setAttribute(SPRING_SECURITY_CONTEXT, context);
+        session.setMaxInactiveInterval(1800);
+    }
+
+    private void configureUserSession(HttpSession session, String user) throws AccessDeniedException, RepositoryException, DatabaseException {
+        Optional.ofNullable(OKMUserConfig.getInstance().getConfig(null))
+                .ifPresent(
+                        cfg -> session.setAttribute("userConfig", cfg)
+                );
+    }
+
+    private HttpURLConnection configureSSL(URLConnection conn) {
+        if (conn instanceof HttpsURLConnection) {
+            ((HttpsURLConnection) conn).setHostnameVerifier((h, s) -> true);
+        }
+        return (HttpURLConnection) conn;
+    }
+
+    private String readResponse(HttpURLConnection conn) throws IOException {
+        if (conn.getResponseCode() != 200) throw new IOException("HTTP " + conn.getResponseCode());
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+            return reader.lines().collect(Collectors.joining());
+        }
+    }
+
+    private void redirectToAuthEndpoint(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        String state = UUID.randomUUID().toString();
+        req.getSession().setAttribute("oauthState", state);
+        res.sendRedirect(authorizationEndpoint + "?response_type=code&client_id=" + clientId +
+                "&redirect_uri=" + URLEncoder.encode(buildRedirectUrl(req), "UTF-8") +
+                "&state=" + state + "&scope=openid roles");
+    }
+
+    private String buildRedirectUrl(HttpServletRequest req) {
+        StringBuffer url = req.getRequestURL();
+        String query = req.getQueryString();
+        return url.toString();
+    }
+
+    private void cleanup(HttpSession session) {
+        SecurityContextHolder.clearContext();
+        if (session != null) session.invalidate();
+    }
+
+    @Override public void init(FilterConfig filterConfig) {}
+    @Override public void destroy() {}
+
+    private static class AuthRequestWrapper extends HttpServletRequestWrapper {
+        private final String user;
+
+        public AuthRequestWrapper(HttpServletRequest req, String user) {
+            super(req);
+            this.user = user;
+        }
+
+        @Override public String getRemoteUser() { return user; }
+        @Override public Principal getUserPrincipal() { return () -> user; }
     }
 }
 ```
@@ -2910,7 +3262,7 @@ Update the `appContext.xml` file to include the new filter and configure the sec
 ```
 
 ### Notes:
-* Make usre to adapt the following values from the appContext
+* Make sure to adapt the following values from the appContext
 ```xml
 <beans:bean id="customOAuth2Filter" class="com.openkm.security.CustomOAuth2Filter">
     <beans:constructor-arg value="OpenKM"/>

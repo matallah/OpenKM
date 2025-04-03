@@ -244,7 +244,6 @@ public class CustomOAuth2Filter implements Filter {
 
 	private static class AuthRequestWrapper extends HttpServletRequestWrapper {
 		private final String user;
-
 		public AuthRequestWrapper(HttpServletRequest req, String user) {
 			super(req);
 			this.user = user;
