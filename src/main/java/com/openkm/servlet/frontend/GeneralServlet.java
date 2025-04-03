@@ -134,7 +134,14 @@ public class GeneralServlet extends OKMRemoteServiceServlet implements OKMGenera
 		List<String> extensions;
 
 		try {
-			UserConfig uc = UserConfigDAO.findByPk(getThreadLocalRequest().getRemoteUser());
+			UserConfig uc = UserConfigDAO.findByPk(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			Profile up = uc.getProfile();
 			extensions = new ArrayList<>(up.getPrfMisc().getExtensions());
 		} catch (PathNotFoundException e) {
