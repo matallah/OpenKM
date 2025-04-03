@@ -52,9 +52,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.util.*;
+
+
 
 @Component
 public class DbAuthModule implements AuthModule, ApplicationContextAware {
@@ -72,24 +80,34 @@ public class DbAuthModule implements AuthModule, ApplicationContextAware {
 
 		try {
 			Authentication auth = PrincipalUtils.getAuthentication();
+			if (auth == null) {
+				// Fallback: Attempt to retrieve user from session
+				HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+				HttpSession session = request.getSession(false);
+				if (session != null) {
+					SecurityContext context = (SecurityContext) session.getAttribute("SPRING_SECURITY_CONTEXT");
+					if (context != null) {
+						auth = context.getAuthentication();
+						SecurityContextHolder.setContext(context); // Update thread-local context
+					}
+				}
+			}
 
-			if (auth != null) {
+			if (auth != null && auth.isAuthenticated()) {
 				String user = auth.getName();
 				loadUserData(user);
-
 				// Activity log
-				// @see com.openkm.spring.LoggerListener
 			} else {
 				throw new RepositoryException("User not authenticated");
 			}
 		} catch (DatabaseException e) {
 			throw e;
-		} catch (PathNotFoundException | AccessDeniedException | ItemExistsException e) {
-			log.error(e.getMessage(), e);
-			throw new RepositoryException(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+		} catch (Exception e) {
+			log.error("Login error", e);
+			throw new RepositoryException(e.getMessage(), e);
 		}
 
-		log.debug("grantRole: void");
+		log.debug("login: successful");
 	}
 
 	@Override

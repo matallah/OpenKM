@@ -54,7 +54,14 @@ public class ProposedQueryServlet extends OKMRemoteServiceServlet implements OKM
 		updateSessionManager();
 
 		try {
-			String remoteUser = getThreadLocalRequest().getRemoteUser();
+			String remoteUser = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			String to = "";
 			if (!users.equals("") && !roles.equals("")) {
 				to = users + "," + roles;
@@ -97,7 +104,14 @@ public class ProposedQueryServlet extends OKMRemoteServiceServlet implements OKM
 		Map<String, Long> received = new HashMap<>();
 		updateSessionManager();
 		try {
-			String user = getThreadLocalRequest().getRemoteUser();
+			String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			Map<String, Long> unreadMap = ProposedQueryDAO.findProposedQueriesUsersFromUnread(user);
 			for (String sender : ProposedQueryDAO.findProposedQueriesUsersFrom(user)) {
 				if (unreadMap.containsKey(sender)) {
@@ -147,7 +161,14 @@ public class ProposedQueryServlet extends OKMRemoteServiceServlet implements OKM
 		List<GWTProposedQueryReceived> proposedQueryReceivedList = new ArrayList<>();
 
 		try {
-			String me = getThreadLocalRequest().getRemoteUser();
+			String me = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 			for (QueryParams queryParams : QueryParamsDAO.findProposedQueryByMeFromUser(me, user)) {
 				for (ProposedQueryReceived proposedQueryReceived : queryParams.getProposedReceived()) {
@@ -219,7 +240,14 @@ public class ProposedQueryServlet extends OKMRemoteServiceServlet implements OKM
 		updateSessionManager();
 
 		try {
-			for (ProposedQueryReceived proposedQueryReceived : ProposedQueryDAO.findProposedQueryByMeFromUser(getThreadLocalRequest().getRemoteUser(), user)) {
+			for (ProposedQueryReceived proposedQueryReceived : ProposedQueryDAO.findProposedQueryByMeFromUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")), user)) {
 				pqId.add(String.valueOf(proposedQueryReceived.getId()));
 			}
 			for (String id : pqId) {

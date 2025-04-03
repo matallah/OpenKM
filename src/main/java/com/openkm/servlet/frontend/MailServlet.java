@@ -382,7 +382,14 @@ public class MailServlet extends OKMRemoteServiceServlet implements OKMMailServi
 			}
 
 			// Get session user email address && mail forward
-			String from = new DbAuthModule().getMail(null, getThreadLocalRequest().getRemoteUser());
+			String from = new DbAuthModule().getMail(null, java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			MailUtils.forwardMail(null, from, to, message, mailPath);
 		} catch (PrincipalAdapterException e) {
 			log.warn(e.getMessage(), e);

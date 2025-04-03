@@ -56,7 +56,14 @@ public class ProposedSubscriptionServlet extends OKMRemoteServiceServlet impleme
 		updateSessionManager();
 
 		try {
-			String remoteUser = getThreadLocalRequest().getRemoteUser();
+			String remoteUser = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			String to = "";
 
 			if (!users.equals("") && !roles.equals("")) {
@@ -115,7 +122,14 @@ public class ProposedSubscriptionServlet extends OKMRemoteServiceServlet impleme
 		updateSessionManager();
 
 		try {
-			String user = getThreadLocalRequest().getRemoteUser();
+			String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			Map<String, Long> unreadMap = ProposedSubscriptionDAO.findProposedSubscriptionsUsersFromUnread(user);
 
 			for (String sender : ProposedSubscriptionDAO.findProposedSubscriptionsUsersFrom(user)) {
@@ -142,7 +156,14 @@ public class ProposedSubscriptionServlet extends OKMRemoteServiceServlet impleme
 
 		try {
 			for (ProposedSubscriptionReceived proposedSubscriptionReceived : ProposedSubscriptionDAO.findProposedSubscriptionByMeFromUser(
-					getThreadLocalRequest().getRemoteUser(), user)) {
+					java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")), user)) {
 				String path = NodeBaseDAO.getInstance().getPathFromUuid(proposedSubscriptionReceived.getNode());
 				proposedQuerySubscriptionList.add(GWTUtil.copy(proposedSubscriptionReceived, path));
 			}

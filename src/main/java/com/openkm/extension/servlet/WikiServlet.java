@@ -176,7 +176,14 @@ public class WikiServlet extends OKMRemoteServiceServlet implements OKMWikiServi
 		log.debug("lock({})", wikiPage);
 
 		try {
-			if (!WikiPageDAO.lock(GWTUtil.copy(wikiPage), getThreadLocalRequest().getRemoteUser())) {
+			if (!WikiPageDAO.lock(GWTUtil.copy(wikiPage), java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")))) {
 				throw new OKMException(ErrorCode.get(ErrorCode.ORIGIN_OKMWikiService, ErrorCode.CAUSE_Database), "Not possible doing lock");
 			}
 		} catch (DatabaseException e) {
@@ -190,7 +197,14 @@ public class WikiServlet extends OKMRemoteServiceServlet implements OKMWikiServi
 		log.debug("unlock({})", wikiPage);
 
 		try {
-			if (!WikiPageDAO.unlock(GWTUtil.copy(wikiPage), getThreadLocalRequest().getRemoteUser())) {
+			if (!WikiPageDAO.unlock(GWTUtil.copy(wikiPage), java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")))) {
 				throw new OKMException(ErrorCode.get(ErrorCode.ORIGIN_OKMWikiService, ErrorCode.CAUSE_Database), "Not possible doing unlock");
 			}
 		} catch (DatabaseException e) {

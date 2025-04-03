@@ -231,7 +231,14 @@ public class ZohoServlet extends OKMRemoteServiceServlet implements OKMZohoServi
 				log.debug("OK: " + filePost.getResponseBodyAsString());
 				ZohoToken zot = new ZohoToken();
 				zot.setId(id);
-				zot.setUser(getThreadLocalRequest().getRemoteUser());
+				zot.setUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 				zot.setNode(nodeUuid);
 				zot.setCreation(Calendar.getInstance());
 				ZohoTokenDAO.create(zot);

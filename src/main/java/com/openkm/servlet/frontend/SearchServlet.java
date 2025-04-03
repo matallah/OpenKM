@@ -63,7 +63,14 @@ public class SearchServlet extends OKMRemoteServiceServlet implements OKMSearchS
 			for (QueryParams params : OKMSearch.getInstance().getAllSearchs(null)) {
 				resultList.add(GWTUtil.copy(params));
 			}
-			for (QueryParams params : QueryParamsDAO.findShared(getThreadLocalRequest().getRemoteUser())) {
+			for (QueryParams params : QueryParamsDAO.findShared(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")))) {
 				// Not include dashboard queries ( user news )
 				if (!params.isDashboard()) {
 					GWTQueryParams gWTQueryParams = GWTUtil.copy(params);
@@ -297,7 +304,14 @@ public class SearchServlet extends OKMRemoteServiceServlet implements OKMSearchS
 		updateSessionManager();
 
 		try {
-			QueryParamsDAO.share(qpId, getThreadLocalRequest().getRemoteUser());
+			QueryParamsDAO.share(qpId, java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 		} catch (DatabaseException e) {
 			log.error(e.getMessage(), e);
 			throw new OKMException(ErrorCode.get(ErrorCode.ORIGIN_OKMSearchService, ErrorCode.CAUSE_Database),
@@ -313,7 +327,14 @@ public class SearchServlet extends OKMRemoteServiceServlet implements OKMSearchS
 		updateSessionManager();
 
 		try {
-			QueryParamsDAO.unshare(qpId, getThreadLocalRequest().getRemoteUser());
+			QueryParamsDAO.unshare(qpId, java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 		} catch (DatabaseException e) {
 			log.error(e.getMessage(), e);
 			throw new OKMException(ErrorCode.get(ErrorCode.ORIGIN_OKMSearchService, ErrorCode.CAUSE_Database),

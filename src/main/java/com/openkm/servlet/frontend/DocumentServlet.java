@@ -1194,7 +1194,14 @@ public class DocumentServlet extends OKMRemoteServiceServlet implements OKMDocum
 	@Override
 	public List<GWTDocument> getAllTemplates() throws OKMException {
 		List<GWTDocument> docs = new ArrayList<>();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		try {
 			String tmplUuid = NodeBaseDAO.getInstance().getUuidFromPath("/" + Repository.TEMPLATES);

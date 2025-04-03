@@ -55,7 +55,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public void login() throws OKMException {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		if (user != null) {
 			manager.login(user);
@@ -65,7 +72,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public void logout() throws OKMException {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		if (user != null) {
 			manager.logout(user);
@@ -99,7 +113,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 		updateSessionManager();
 
 		try {
-			String actualUser = getThreadLocalRequest().getRemoteUser();
+			String actualUser = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			return manager.createNewChatRoom(actualUser, user);
 		} catch (PrincipalAdapterException e) {
 			log.error(e.getMessage(), e);
@@ -110,7 +131,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public List<String> getPendingMessage(String room) throws OKMException {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 		List<String> pendingMessages = new ArrayList<>();
 
 		try {
@@ -140,7 +168,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public List<String> getPendingChatRoomUser() {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 		List<String> pendingRooms = new ArrayList<>();
 
 		if (user != null) {
@@ -165,7 +200,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public void addMessageToRoom(String room, String msg) throws OKMException {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		try {
 			if (user != null) {
@@ -180,7 +222,14 @@ public class ChatServlet extends OKMRemoteServiceServlet implements OKMChatServi
 	@Override
 	public void closeRoom(String room) throws OKMException {
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		try {
 			if (user != null) {

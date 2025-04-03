@@ -222,7 +222,14 @@ public class MacrosServlet extends OKMRemoteServiceServlet implements OKMMacrosS
 				Map<String, Integer> orgUsersMap = OKMAuth.getInstance().getGrantedUsers(null, originPath);
 
 				// Add full grants to actual remote user
-				String remoteUser = getThreadLocalRequest().getRemoteUser();
+				String remoteUser = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 				int allGrants = Permission.ALL_GRANTS;
 
 				if ((Config.SECURITY_EXTENDED_MASK & Permission.PROPERTY_GROUP) == Permission.PROPERTY_GROUP) {

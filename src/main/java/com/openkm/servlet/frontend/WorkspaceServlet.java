@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+
 /**
  * WorkspaceServlet
  *
@@ -109,11 +110,24 @@ public class WorkspaceServlet extends OKMRemoteServiceServlet implements OKMWork
 		try {
 			// User data
 			GWTUser gwtUser = new GWTUser();
-			gwtUser.setId(getThreadLocalRequest().getRemoteUser());
+			gwtUser.setId(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			gwtUser.setUsername(OKMAuth.getInstance().getName(null, gwtUser.getId()));
 			workspace.setUser(gwtUser);
-
-			UserConfig uc = UserConfigDAO.findByPk(getThreadLocalRequest().getRemoteUser());
+			UserConfig uc = UserConfigDAO.findByPk(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			up = uc.getProfile();
 
 			for (String pgroup : up.getPrfWizard().getPropertyGroups()) {
@@ -441,20 +455,41 @@ public class WorkspaceServlet extends OKMRemoteServiceServlet implements OKMWork
 
 			User user = new User();
 			if (Config.PRINCIPAL_ADAPTER.equals(DatabasePrincipalAdapter.class.getCanonicalName())) {
-				user = AuthDAO.findUserByPk(getThreadLocalRequest().getRemoteUser());
+				user = AuthDAO.findUserByPk(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 
 				if (user != null) {
 					workspace.setEmail(user.getEmail());
 				}
 			} else {
-				user.setId(getThreadLocalRequest().getRemoteUser());
+				user.setId(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 				user.setName("");
 				user.setEmail("");
 				user.setActive(true);
 				user.setPassword("");
 			}
 
-			for (MailAccount mailAccount : MailAccountDAO.findByUser(getThreadLocalRequest().getRemoteUser(), true)) {
+			for (MailAccount mailAccount : MailAccountDAO.findByUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")), true)) {
 				workspace.setMailProtocol(mailAccount.getMailProtocol());
 				workspace.setMailHost(mailAccount.getMailHost());
 				workspace.setMailUser(mailAccount.getMailUser());
@@ -538,7 +573,14 @@ public class WorkspaceServlet extends OKMRemoteServiceServlet implements OKMWork
 		// Disable user configuration modification in demo
 		if (!Config.SYSTEM_DEMO) {
 			try {
-				String userId = getThreadLocalRequest().getRemoteUser();
+				String userId = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 				// Can change password
 				if (Config.PRINCIPAL_ADAPTER.equals(DatabasePrincipalAdapter.class.getCanonicalName())) {
 					if (!workspace.getPassword().isEmpty()) {

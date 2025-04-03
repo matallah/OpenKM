@@ -102,7 +102,14 @@ public class ForumServlet extends OKMRemoteServiceServlet implements OKMForumSer
 			topic.setDate(new Date());
 			topic.setLastPostDate(topic.getDate());
 			topic.setNode(nodeUuid);
-			topic.setUser(getThreadLocalRequest().getRemoteUser());
+			topic.setUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			topic.setLastPostUser(topic.getUser());
 			topic.setReplies(0);
 			topic.setViews(0);
@@ -159,7 +166,14 @@ public class ForumServlet extends OKMRemoteServiceServlet implements OKMForumSer
 
 		try {
 			post.setDate(new Date());
-			post.setUser(getThreadLocalRequest().getRemoteUser());
+			post.setUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 
 			// Fix XSS issues
 			post.setSubject(Encode.forHtml(post.getSubject()));
@@ -307,7 +321,14 @@ public class ForumServlet extends OKMRemoteServiceServlet implements OKMForumSer
 
 			forum.setDate(new Date());
 			forum.setLastPostDate(new Date());
-			forum.setLastPostUser(getThreadLocalRequest().getRemoteUser());
+			forum.setLastPostUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 			forum.setNumPosts(0);
 			forum.setNumTopics(0);
 			Forum f = GWTUtil.copy(forum);

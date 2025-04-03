@@ -314,7 +314,14 @@ public class WorkflowServlet extends OKMRemoteServiceServlet implements OKMWorkf
 		updateSessionManager();
 
 		try {
-			OKMWorkflow.getInstance().setTaskInstanceActorId(null, new Double(id).longValue(), getThreadLocalRequest().getRemoteUser());
+			OKMWorkflow.getInstance().setTaskInstanceActorId(null, new Double(id).longValue(), java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")));
 		} catch (RepositoryException e) {
 			log.error(e.getMessage(), e);
 			throw new OKMException(ErrorCode.get(ErrorCode.ORIGIN_OKMWorkflowService, ErrorCode.CAUSE_Repository), e.getMessage());

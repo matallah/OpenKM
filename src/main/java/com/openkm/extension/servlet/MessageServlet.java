@@ -61,7 +61,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		updateSessionManager();
 
 		try {
-			String remoteUser = getThreadLocalRequest().getRemoteUser();
+			String remoteUser = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			String to = "";
 			if (!users.equals("") && !roles.equals("")) {
 				to = users + "," + roles;
@@ -98,7 +105,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		log.debug("findSentUsersTo()");
 		updateSessionManager();
 		try {
-			String me = getThreadLocalRequest().getRemoteUser();
+			String me = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			List<String> usersList = new ArrayList<>(ProposedQueryDAO.findProposedQuerySentUsersTo(me));
 			for (String user : MessageDAO.findSentUsersTo(me)) {
 				if (!usersList.contains(user)) {
@@ -128,9 +142,23 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		Map<String, Long> received = new HashMap<>();
 		updateSessionManager();
 		try {
-			String user = getThreadLocalRequest().getRemoteUser();
+			String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 			Map<String, Long> unreadMap = MessageDAO.findReceivedUsersFromUnread(user);
-			for (String sender : MessageDAO.findReceivedUsersFrom(getThreadLocalRequest().getRemoteUser())) {
+			for (String sender : MessageDAO.findReceivedUsersFrom(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")))) {
 				if (unreadMap.containsKey(sender)) {
 					received.put(sender, unreadMap.get(sender));
 				} else {
@@ -151,7 +179,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		updateSessionManager();
 
 		try {
-			String me = getThreadLocalRequest().getRemoteUser();
+			String me = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 			for (MessageSent messageSent : MessageDAO.findSentFromMeToUser(me, user)) {
 				GWTTextMessageSent textMessageSent = new GWTTextMessageSent();
@@ -219,7 +254,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		List<GWTMessageReceived> messageReceivedList = new ArrayList<>();
 		updateSessionManager();
 		try {
-			for (MessageReceived messageReceived : MessageDAO.findReceivedByMeFromUser(getThreadLocalRequest().getRemoteUser(), user)) {
+			for (MessageReceived messageReceived : MessageDAO.findReceivedByMeFromUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")), user)) {
 				messageReceivedList.add(GWTUtil.copy(messageReceived));
 			}
 			return messageReceivedList;
@@ -274,7 +316,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		updateSessionManager();
 
 		try {
-			String me = getThreadLocalRequest().getRemoteUser();
+			String me = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 			for (MessageSent messageSent : MessageDAO.findSentFromMeToUser(me, user)) {
 				msgId.add(String.valueOf(messageSent.getId()));
@@ -320,7 +369,14 @@ public class MessageServlet extends OKMRemoteServiceServlet implements OKMMessag
 		updateSessionManager();
 
 		try {
-			for (MessageReceived messageReceived : MessageDAO.findReceivedByMeFromUser(getThreadLocalRequest().getRemoteUser(), user)) {
+			for (MessageReceived messageReceived : MessageDAO.findReceivedByMeFromUser(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")), user)) {
 				msgId.add(String.valueOf(messageReceived.getId()));
 			}
 			for (String id : msgId) {

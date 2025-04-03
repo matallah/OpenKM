@@ -150,7 +150,14 @@ public class AuthServlet extends OKMRemoteServiceServlet implements OKMAuthServi
 	public String getRemoteUser() {
 		log.debug("getRemoteUser()");
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 		log.debug("getRemoteUser: {}", user);
 		return user;
 	}
@@ -531,7 +538,14 @@ public class AuthServlet extends OKMRemoteServiceServlet implements OKMAuthServi
 	public void keepAlive() throws OKMException {
 		log.debug("keepAlive()");
 		updateSessionManager();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 
 		// Activity log
 		UserActivity.log(user, "KEEP_ALIVE", null, null, null);

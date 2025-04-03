@@ -68,7 +68,14 @@ public class PaginationServlet extends OKMRemoteServiceServlet implements OKMPag
 		GWTPaginated paginated = new GWTPaginated();
 		List<Object> col = new ArrayList<>();
 		List<Object> gwtCol = new ArrayList<>();
-		String user = getThreadLocalRequest().getRemoteUser();
+		String user = java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated"));
 		paginated.setObjects(gwtCol);
 		updateSessionManager();
 

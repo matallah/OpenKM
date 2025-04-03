@@ -319,7 +319,14 @@ public class DashboardServlet extends OKMRemoteServiceServlet implements OKMDash
 			for (QueryParams queryParams : OKMDashboard.getInstance().getUserSearchs(null)) {
 				searchList.add(GWTUtil.copy(queryParams));
 			}
-			for (QueryParams params : QueryParamsDAO.findShared(getThreadLocalRequest().getRemoteUser())) {
+			for (QueryParams params : QueryParamsDAO.findShared(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(org.springframework.security.core.Authentication::getName)
+				.orElseThrow(() -> new IllegalStateException("User not authenticated")))) {
 				// Only dashboard queries
 				if (params.isDashboard()) {
 					GWTQueryParams gWTQueryParams = GWTUtil.copy(params);

@@ -32,7 +32,7 @@ public class CustomOAuth2Filter implements Filter {
 	private final String authorizationEndpoint;
 	private final String tokenEndpoint;
 	private final String userInfoEndpoint;
-	private static final String SPRING_SECURITY_CONTEXT = "SPRING_SECURITY_CONTEXT";
+	public static final String SPRING_SECURITY_CONTEXT = "SPRING_SECURITY_CONTEXT";
 	private static final int MAX_RETRIES = 3;
 	private static final int RETRY_DELAY = 1000;
 
@@ -50,6 +50,7 @@ public class CustomOAuth2Filter implements Filter {
 		throws IOException, ServletException {
 		HttpServletRequest req = (HttpServletRequest) request;
 		HttpServletResponse res = (HttpServletResponse) response;
+		threadLocalRequest.set((HttpServletRequest) request);
 
 		if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
 			res.sendRedirect("https://" + req.getServerName() + req.getRequestURI() +
@@ -59,12 +60,15 @@ public class CustomOAuth2Filter implements Filter {
 
 		HttpSession session = req.getSession(true);
 
+		// Restore SecurityContext from session if authenticated
 		if (isAuthenticated(session)) {
-			UserConfig userConfig = (UserConfig) session.getAttribute("userConfig");
+			SecurityContext context = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
+			SecurityContextHolder.setContext(context); // Critical fix: Restore context
 			chain.doFilter(request, response);
 			return;
 		}
 
+		// Handle OAuth2 flow if not authenticated
 		String code = req.getParameter("code");
 		if (code != null) {
 			handleAuthCallbackWithRetry(req, res, code, chain);
@@ -196,14 +200,23 @@ public class CustomOAuth2Filter implements Filter {
 		context.setAuthentication(auth);
 		SecurityContextHolder.setContext(context);
 		session.setAttribute(SPRING_SECURITY_CONTEXT, context);
+		session.setAttribute("user", user);
 		session.setMaxInactiveInterval(1800);
 	}
 
 	private void configureUserSession(HttpSession session, String user) throws AccessDeniedException, RepositoryException, DatabaseException {
 		Optional.ofNullable(OKMUserConfig.getInstance().getConfig(null))
 			.ifPresent(
-				cfg -> session.setAttribute("userConfig", cfg)
+				cfg -> {
+					session.setAttribute("userConfig", cfg);
+					getNewThreadLocalRequest().getSession().setAttribute("user", user);
+				}
 			);
+	}
+
+	private static final ThreadLocal<HttpServletRequest> threadLocalRequest = new ThreadLocal<>();
+	public static HttpServletRequest getNewThreadLocalRequest() {
+		return threadLocalRequest.get();
 	}
 
 	private HttpURLConnection configureSSL(URLConnection conn) {
