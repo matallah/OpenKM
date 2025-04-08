@@ -45,37 +45,81 @@ public class CustomOAuth2Filter implements Filter {
 		this.userInfoEndpoint = userInfoEndpoint;
 	}
 
-	@Override
-	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-		throws IOException, ServletException {
-		HttpServletRequest req = (HttpServletRequest) request;
-		HttpServletResponse res = (HttpServletResponse) response;
-		threadLocalRequest.set((HttpServletRequest) request);
+		@Override
+		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+			throws IOException, ServletException {
+			HttpServletRequest req = (HttpServletRequest) request;
+			HttpServletResponse res = (HttpServletResponse) response;
+			threadLocalRequest.set(req);
 
-		if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
-			res.sendRedirect("https://" + req.getServerName() + req.getRequestURI() +
-				(req.getQueryString() != null ? "?" + req.getQueryString() : ""));
-			return;
+			// Handle API requests first (stateless)
+			if (isApiRequest(req)) {
+				handleApiRequest(req, res, chain);
+				return;
+			}
+
+			// Existing browser-based OAuth2 flow
+			if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
+				res.sendRedirect("https://" + req.getServerName() + req.getRequestURI()
+					+ (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
+				return;
+			}
+
+			HttpSession session = req.getSession(true);
+
+			if (isAuthenticated(session)) {
+				SecurityContext context = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
+				SecurityContextHolder.setContext(context);
+				chain.doFilter(request, response);
+				return;
+			}
+
+			String code = req.getParameter("code");
+			if (code != null) {
+				handleAuthCallbackWithRetry(req, res, code, chain);
+			} else {
+				redirectToAuthEndpoint(req, res);
+			}
 		}
 
-		HttpSession session = req.getSession(true);
-
-		// Restore SecurityContext from session if authenticated
-		if (isAuthenticated(session)) {
-			SecurityContext context = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
-			SecurityContextHolder.setContext(context); // Critical fix: Restore context
-			chain.doFilter(request, response);
-			return;
+		private boolean isApiRequest(HttpServletRequest req) {
+			// Adjust the path pattern as needed for your API endpoints
+			return req.getRequestURI().startsWith(req.getContextPath() + "/services/rest/");
 		}
 
-		// Handle OAuth2 flow if not authenticated
-		String code = req.getParameter("code");
-		if (code != null) {
-			handleAuthCallbackWithRetry(req, res, code, chain);
-		} else {
-			redirectToAuthEndpoint(req, res);
+		private void handleApiRequest(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+			throws IOException, ServletException {
+			String authHeader = req.getHeader("Authorization");
+			if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+				sendUnauthorized(res, "Missing Bearer token");
+				return;
+			}
+
+			String token = authHeader.substring(7);
+			try {
+				JSONObject userInfo = new JSONObject(getUserInfo(token));
+				String username = userInfo.getString("preferred_username");
+
+				Set<GrantedAuthority> authorities = new HashSet<>();
+				extractRoles(userInfo, authorities);
+				// Optionally add default roles if necessary
+				authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+
+				synchronizeUser(username);
+				setupSecurityContext(username, authorities, null, req); // No session for API
+
+				chain.doFilter(req, res);
+			} catch (Exception e) {
+				log.error("API authentication failed", e);
+				sendUnauthorized(res, "Invalid token");
+			}
 		}
-	}
+
+		private void sendUnauthorized(HttpServletResponse res, String message) throws IOException {
+			res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			res.getWriter().write(message);
+			res.getWriter().flush();
+		}
 
 	private boolean isAuthenticated(HttpSession session) {
 		if (session == null) {
@@ -191,18 +235,21 @@ public class CustomOAuth2Filter implements Filter {
 		}
 	}
 
-	private void setupSecurityContext(String user, Set<GrantedAuthority> authorities,
-									  HttpSession session, HttpServletRequest req) {
-		SecurityContext context = SecurityContextHolder.createEmptyContext();
-		UsernamePasswordAuthenticationToken auth =
-			new UsernamePasswordAuthenticationToken(user, null, authorities);
-		auth.setDetails(new WebAuthenticationDetails(req));
-		context.setAuthentication(auth);
-		SecurityContextHolder.setContext(context);
-		session.setAttribute(SPRING_SECURITY_CONTEXT, context);
-		session.setAttribute("user", user);
-		session.setMaxInactiveInterval(1800);
-	}
+		private void setupSecurityContext(String user, Set<GrantedAuthority> authorities,
+										  HttpSession session, HttpServletRequest req) {
+			SecurityContext context = SecurityContextHolder.createEmptyContext();
+			UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+				user, null, authorities);
+			auth.setDetails(new WebAuthenticationDetails(req));
+			context.setAuthentication(auth);
+			SecurityContextHolder.setContext(context);
+
+			if (session != null) { // Only set session attributes for non-API requests
+				session.setAttribute(SPRING_SECURITY_CONTEXT, context);
+				session.setAttribute("user", user);
+				session.setMaxInactiveInterval(1800);
+			}
+		}
 
 	private void configureUserSession(HttpSession session, String user) throws AccessDeniedException, RepositoryException, DatabaseException {
 		Optional.ofNullable(OKMUserConfig.getInstance().getConfig(null))
