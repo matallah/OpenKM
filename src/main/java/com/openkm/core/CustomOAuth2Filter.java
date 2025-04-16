@@ -103,7 +103,8 @@ public class CustomOAuth2Filter implements Filter {
 				Set<GrantedAuthority> authorities = new HashSet<>();
 				extractRoles(userInfo, authorities);
 				// Optionally add default roles if necessary
-				authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+				//authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+				authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 
 				synchronizeUser(username);
 				setupSecurityContext(username, authorities, null, req); // No session for API
@@ -215,7 +216,7 @@ public class CustomOAuth2Filter implements Filter {
 		Set<GrantedAuthority> authorities = new HashSet<>();
 		extractRoles(token, authorities);
 		extractRoles(userInfo, authorities);
-		authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+		//authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
 		authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 		return authorities;
 	}
