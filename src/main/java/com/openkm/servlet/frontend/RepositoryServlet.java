@@ -54,7 +54,15 @@ public class RepositoryServlet extends OKMRemoteServiceServlet implements OKMRep
 
 		try {
 			// Administrators user can see all user homes
-			if (getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+			if (java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(auth -> auth.getAuthorities().stream()
+					.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+				.orElse(false)) {
 				folder = OKMRepository.getInstance().getPersonalFolderBase(null);
 			} else {
 				folder = OKMRepository.getInstance().getPersonalFolder(null);
@@ -140,7 +148,15 @@ public class RepositoryServlet extends OKMRemoteServiceServlet implements OKMRep
 
 		try {
 			// Administrators user can see all user homes
-			if (getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+			if (java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(auth -> auth.getAuthorities().stream()
+					.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+				.orElse(false)) {
 				folder = OKMRepository.getInstance().getTrashFolderBase(null);
 			} else {
 				folder = OKMRepository.getInstance().getTrashFolder(null);
@@ -201,7 +217,15 @@ public class RepositoryServlet extends OKMRemoteServiceServlet implements OKMRep
 
 		try {
 			// Administrators user can see all user homes
-			if (getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+			if (java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(auth -> auth.getAuthorities().stream()
+					.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+				.orElse(false)) {
 				folder = OKMRepository.getInstance().getMailFolderBase(null);
 			} else {
 				folder = OKMRepository.getInstance().getMailFolder(null);

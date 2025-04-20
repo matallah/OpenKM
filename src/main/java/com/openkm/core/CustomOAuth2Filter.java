@@ -11,8 +11,12 @@ import java.net.URLEncoder;
 import java.security.Principal;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import com.openkm.api.OKMAuth;
 import com.openkm.api.OKMUserConfig;
 import com.openkm.dao.bean.UserConfig;
+import com.openkm.module.AuthModule;
+import com.openkm.module.ModuleManager;
 import com.openkm.module.db.DbAuthModule;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -48,82 +52,82 @@ public class CustomOAuth2Filter implements Filter {
 		this.userInfoEndpoint = userInfoEndpoint;
 	}
 
-		@Override
-		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-			throws IOException, ServletException {
-			HttpServletRequest req = (HttpServletRequest) request;
-			HttpServletResponse res = (HttpServletResponse) response;
-			threadLocalRequest.set(req);
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+		throws IOException, ServletException {
+		HttpServletRequest req = (HttpServletRequest) request;
+		HttpServletResponse res = (HttpServletResponse) response;
+		threadLocalRequest.set(req);
 
-			// Handle API requests first (stateless)
-			if (isApiRequest(req)) {
-				handleApiRequest(req, res, chain);
-				return;
-			}
-
-			// Existing browser-based OAuth2 flow
-			if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
-				res.sendRedirect("https://" + req.getServerName() + req.getRequestURI()
-					+ (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
-				return;
-			}
-
-			HttpSession session = req.getSession(true);
-
-			if (isAuthenticated(session)) {
-				SecurityContext context = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
-				SecurityContextHolder.setContext(context);
-				chain.doFilter(request, response);
-				return;
-			}
-
-			String code = req.getParameter("code");
-			if (code != null) {
-				handleAuthCallbackWithRetry(req, res, code, chain);
-			} else {
-				redirectToAuthEndpoint(req, res);
-			}
+		// Handle API requests first (stateless)
+		if (isApiRequest(req)) {
+			handleApiRequest(req, res, chain);
+			return;
 		}
 
-		private boolean isApiRequest(HttpServletRequest req) {
-			// Adjust the path pattern as needed for your API endpoints
-			return req.getRequestURI().startsWith(req.getContextPath() + "/services/rest/");
+		// Existing browser-based OAuth2 flow
+		if (!req.isSecure() && req.getHeader("X-Forwarded-Proto") != null) {
+			res.sendRedirect("https://" + req.getServerName() + req.getRequestURI()
+				+ (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
+			return;
 		}
 
-		private void handleApiRequest(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-			throws IOException, ServletException {
-			String authHeader = req.getHeader("Authorization");
-			if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-				sendUnauthorized(res, "Missing Bearer token");
-				return;
-			}
+		HttpSession session = req.getSession(true);
 
-			String token = authHeader.substring(7);
-			try {
-				JSONObject userInfo = new JSONObject(getUserInfo(token));
-				String username = userInfo.getString("preferred_username");
-
-				Set<GrantedAuthority> authorities = new HashSet<>();
-				extractRoles(userInfo, authorities);
-				// Optionally add default roles if necessary
-				authorities.add(new SimpleGrantedAuthority(DEFAULT_USER_ROLE));
-				authorities.add(new SimpleGrantedAuthority(DEFAULT_ADMIN_ROLE));
-
-				synchronizeUser(username);
-				setupSecurityContext(username, authorities, null, req); // No session for API
-
-				chain.doFilter(req, res);
-			} catch (Exception e) {
-				log.error("API authentication failed", e);
-				sendUnauthorized(res, "Invalid token");
-			}
+		if (isAuthenticated(session)) {
+			SecurityContext context = (SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT);
+			SecurityContextHolder.setContext(context);
+			chain.doFilter(request, response);
+			return;
 		}
 
-		private void sendUnauthorized(HttpServletResponse res, String message) throws IOException {
-			res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			res.getWriter().write(message);
-			res.getWriter().flush();
+		String code = req.getParameter("code");
+		if (code != null) {
+			handleAuthCallbackWithRetry(req, res, code, chain);
+		} else {
+			redirectToAuthEndpoint(req, res);
 		}
+	}
+
+	private boolean isApiRequest(HttpServletRequest req) {
+		// Adjust the path pattern as needed for your API endpoints
+		return req.getRequestURI().startsWith(req.getContextPath() + "/services/rest/");
+	}
+
+	private void handleApiRequest(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+		throws IOException, ServletException {
+		String authHeader = req.getHeader("Authorization");
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+			sendUnauthorized(res, "Missing Bearer token");
+			return;
+		}
+
+		String token = authHeader.substring(7);
+		try {
+			JSONObject userInfo = new JSONObject(getUserInfo(token));
+			String username = userInfo.getString("preferred_username");
+
+			Set<GrantedAuthority> authorities = new HashSet<>();
+			extractRoles(userInfo, authorities);
+			// Optionally add default roles if necessary
+			authorities.add(new SimpleGrantedAuthority(DEFAULT_USER_ROLE));
+			authorities.add(new SimpleGrantedAuthority(DEFAULT_ADMIN_ROLE));
+
+			synchronizeUser(username);
+			setupSecurityContext(username, authorities, null, req); // No session for API
+
+			chain.doFilter(req, res);
+		} catch (Exception e) {
+			log.error("API authentication failed", e);
+			sendUnauthorized(res, "Invalid token");
+		}
+	}
+
+	private void sendUnauthorized(HttpServletResponse res, String message) throws IOException {
+		res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+		res.getWriter().write(message);
+		res.getWriter().flush();
+	}
 
 	private boolean isAuthenticated(HttpSession session) {
 		if (session == null) {
@@ -160,8 +164,12 @@ public class CustomOAuth2Filter implements Filter {
 				return;
 			} catch (Exception e) {
 				lastError = e;
-				log.warn("Auth attempt {} failed: {}", i+1, e.getMessage());
-				try { Thread.sleep(RETRY_DELAY); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+				log.warn("Auth attempt {} failed: {}", i + 1, e.getMessage());
+				try {
+					Thread.sleep(RETRY_DELAY);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
 			}
 		}
 		log.error("Auth failed after {} attempts", MAX_RETRIES, lastError);
@@ -176,13 +184,17 @@ public class CustomOAuth2Filter implements Filter {
 			JSONObject userInfo = new JSONObject(getUserInfo(token.getString("access_token")));
 
 			String username = userInfo.getString("preferred_username");
+			String userToken = token.getString("access_token");
 			if ("okmadmin".equals(username)) username = "okmAdmin";
 
-			Set<GrantedAuthority> authorities = extractAuthorities(token, userInfo);
+			synchronizeUser(username); // Ensure user exists in OpenKM
 
-			synchronizeUser(username);
+			// Fetch OpenKM user roles after synchronization
+			Set<GrantedAuthority> authorities = getOpenKMAuthorities(userToken, username);
+			AuthModule am = ModuleManager.getAuthModule();
+			//OKMAuth.getInstance().assignRole(null, username, DEFAULT_ADMIN_ROLE);
 			setupSecurityContext(username, authorities, session, req);
-			configureUserSession(session, username);
+			configureUserSession(session, username); // Load user config into session
 
 			return new AuthRequestWrapper(req, username);
 		} catch (Exception e) {
@@ -241,33 +253,34 @@ public class CustomOAuth2Filter implements Filter {
 		}
 	}
 
-		private void setupSecurityContext(String user, Set<GrantedAuthority> authorities,
-										  HttpSession session, HttpServletRequest req) {
-			SecurityContext context = SecurityContextHolder.createEmptyContext();
-			UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-				user, null, authorities);
-			auth.setDetails(new WebAuthenticationDetails(req));
-			context.setAuthentication(auth);
-			SecurityContextHolder.setContext(context);
+	private void setupSecurityContext(String user, Set<GrantedAuthority> authorities,
+									  HttpSession session, HttpServletRequest req) {
+		SecurityContext context = SecurityContextHolder.createEmptyContext();
+		UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+			user, null, authorities);
+		auth.setDetails(new WebAuthenticationDetails(req));
+		context.setAuthentication(auth);
+		SecurityContextHolder.setContext(context);
 
-			if (session != null) { // Only set session attributes for non-API requests
-				session.setAttribute(SPRING_SECURITY_CONTEXT, context);
-				session.setAttribute("user", user);
-				session.setMaxInactiveInterval(1800);
-			}
+		if (session != null) { // Only set session attributes for non-API requests
+			session.setAttribute(SPRING_SECURITY_CONTEXT, context);
+			session.setAttribute("user", user);
+			session.setMaxInactiveInterval(1800);
 		}
+	}
 
-	private void configureUserSession(HttpSession session, String user) throws AccessDeniedException, RepositoryException, DatabaseException {
-		Optional.ofNullable(OKMUserConfig.getInstance().getConfig(null))
-			.ifPresent(
-				cfg -> {
-					session.setAttribute("userConfig", cfg);
-					getNewThreadLocalRequest().getSession().setAttribute("user", user);
-				}
-			);
+	private void configureUserSession(HttpSession session, String user) {
+		try {
+			UserConfig cfg = OKMUserConfig.getInstance().getConfig(user); // Pass username
+			session.setAttribute("userConfig", cfg);
+			getNewThreadLocalRequest().getSession().setAttribute("user", user);
+		} catch (Exception e) {
+			log.error("Error configuring user session for {}", user, e);
+		}
 	}
 
 	private static final ThreadLocal<HttpServletRequest> threadLocalRequest = new ThreadLocal<>();
+
 	public static HttpServletRequest getNewThreadLocalRequest() {
 		return threadLocalRequest.get();
 	}
@@ -297,7 +310,10 @@ public class CustomOAuth2Filter implements Filter {
 	private String buildRedirectUrl(HttpServletRequest req) {
 		StringBuffer url = req.getRequestURL();
 		String query = req.getQueryString();
-		 return url.toString();
+		if (query != null) {
+			//url.append("?").append(query);
+		}
+		return url.toString();
 	}
 
 	private void cleanup(HttpSession session) {
@@ -305,17 +321,45 @@ public class CustomOAuth2Filter implements Filter {
 		if (session != null) session.invalidate();
 	}
 
-	@Override public void init(FilterConfig filterConfig) {}
-	@Override public void destroy() {}
+	@Override
+	public void init(FilterConfig filterConfig) {
+	}
+
+	@Override
+	public void destroy() {
+	}
 
 	private static class AuthRequestWrapper extends HttpServletRequestWrapper {
 		private final String user;
+
 		public AuthRequestWrapper(HttpServletRequest req, String user) {
 			super(req);
 			this.user = user;
 		}
 
-		@Override public String getRemoteUser() { return user; }
-		@Override public Principal getUserPrincipal() { return () -> user; }
+		@Override
+		public String getRemoteUser() {
+			return user;
+		}
+
+		@Override
+		public Principal getUserPrincipal() {
+			return () -> user;
+		}
+	}
+
+	private Set<GrantedAuthority> getOpenKMAuthorities(String token, String username) {
+		Set<GrantedAuthority> authorities = new HashSet<>();
+		try {
+			List<String> user = OKMAuth.getInstance().getRolesByUser("SSO", username);
+			for (String role : user) {
+				authorities.add(new SimpleGrantedAuthority(role));
+			}
+		} catch (Exception e) {
+			log.error("Error fetching OpenKM roles for {}", username, e);
+			// Fallback to default role if necessary
+			authorities.add(new SimpleGrantedAuthority(DEFAULT_USER_ROLE));
+		}
+		return authorities;
 	}
 }

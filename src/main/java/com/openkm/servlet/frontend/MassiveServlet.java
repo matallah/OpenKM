@@ -364,7 +364,15 @@ public class MassiveServlet extends OKMRemoteServiceServlet implements OKMMassiv
 
 		for (String path : paths) {
 			try {
-				if (getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+				if (java.util.Optional.ofNullable(
+						(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+							.getSession()
+							.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+					)
+					.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+					.map(auth -> auth.getAuthorities().stream()
+						.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+					.orElse(false)) {
 					OKMDocument.getInstance().forceUnlock(null, path);
 				} else {
 					OKMDocument.getInstance().unlock(null, path);

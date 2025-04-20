@@ -56,7 +56,15 @@ public class BaseServlet extends HttpServlet {
 	 * Test if an user can access to administration
 	 */
 	public static boolean isAdmin(HttpServletRequest request) {
-		return request.isUserInRole(Config.DEFAULT_ADMIN_ROLE);
+		return java.util.Optional.ofNullable(
+				(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+					.getSession()
+					.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+			)
+			.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+			.map(auth -> auth.getAuthorities().stream()
+				.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+			.orElse(false);
 	}
 
 	/**

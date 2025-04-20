@@ -76,7 +76,15 @@ public class AuthServlet extends BaseServlet {
 		String userId = request.getRemoteUser();
 		updateSessionManager(request);
 
-		if (isMultipleInstancesAdmin(request) || request.isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+		if (isMultipleInstancesAdmin(request) || java.util.Optional.ofNullable(
+				(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+					.getSession()
+					.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+			)
+			.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+			.map(auth -> auth.getAuthorities().stream()
+				.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+			.orElse(false)) {
 			try {
 				if (action.equals("userCreate")) {
 					userCreate(userId, request, response);
@@ -131,7 +139,15 @@ public class AuthServlet extends BaseServlet {
         String userId = request.getRemoteUser();
         updateSessionManager(request);
 
-        if (isMultipleInstancesAdmin(request) || request.isUserInRole(Config.DEFAULT_ADMIN_ROLE)) {
+        if (isMultipleInstancesAdmin(request) || java.util.Optional.ofNullable(
+				(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+					.getSession()
+					.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+			)
+			.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+			.map(auth -> auth.getAuthorities().stream()
+				.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+			.orElse(false)) {
             try {
 
                 if (action.equals("userCreate")) {

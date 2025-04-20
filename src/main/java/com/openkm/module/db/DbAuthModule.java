@@ -560,16 +560,17 @@ public class DbAuthModule implements AuthModule, ApplicationContextAware {
 	@Override
 	public List<String> getRolesByUser(String token, String user) throws PrincipalAdapterException {
 		Authentication oldAuth = null;
-		List<String> roles;
+		List<String> roles = Collections.emptyList();
 
 		try {
-			if (token == null) {
-				PrincipalUtils.getAuthentication();
-			} else {
-				oldAuth = PrincipalUtils.getAuthentication();
-				PrincipalUtils.getAuthenticationByToken(token);
+			if (!"SSO".equals(token)) {
+				if (token == null) {
+					PrincipalUtils.getAuthentication();
+				} else {
+					oldAuth = PrincipalUtils.getAuthentication();
+					PrincipalUtils.getAuthenticationByToken(token);
+				}
 			}
-
 			roles = CommonAuthModule.getRolesByUser(user);
 		} catch (AccessDeniedException e) {
 			throw new PrincipalAdapterException(e.getMessage(), e);

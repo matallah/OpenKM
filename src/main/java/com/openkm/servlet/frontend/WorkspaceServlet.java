@@ -224,7 +224,15 @@ public class WorkspaceServlet extends OKMRemoteServiceServlet implements OKMWork
 			workspace.setTabDesktopVisible(up.getPrfTab().isDesktopVisible());
 			workspace.setTabSearchVisible(up.getPrfTab().isSearchVisible());
 			workspace.setTabDashboardVisible(up.getPrfTab().isDashboardVisible());
-			workspace.setTabAdminVisible(getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE)
+			workspace.setTabAdminVisible(java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(auth -> auth.getAuthorities().stream()
+					.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+				.orElse(false)
 					&& up.getPrfTab().isAdministrationVisible());
 
 			// If there's no stack visible force Desktop to do not be visible
@@ -320,7 +328,15 @@ public class WorkspaceServlet extends OKMRemoteServiceServlet implements OKMWork
 			availableOption.setSkinOption(up.getPrfMenu().getPrfTool().isSkinVisible());
 			availableOption.setDebugOption(up.getPrfMenu().getPrfTool().isDebugVisible());
 			availableOption.setAdministrationOption(up.getPrfMenu().getPrfTool().isAdministrationVisible()
-					&& getThreadLocalRequest().isUserInRole(Config.DEFAULT_ADMIN_ROLE));
+					&& java.util.Optional.ofNullable(
+					(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+						.getSession()
+						.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+				)
+				.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+				.map(auth -> auth.getAuthorities().stream()
+					.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+				.orElse(false));
 			availableOption.setPreferencesOption(up.getPrfMenu().getPrfTool().isPreferencesVisible());
 			availableOption.setConvertOption(up.getPrfMenu().getPrfTool().isConvertVisible());
 
