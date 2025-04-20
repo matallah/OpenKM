@@ -25,6 +25,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
+import static com.openkm.core.Config.DEFAULT_ADMIN_ROLE;
+import static com.openkm.core.Config.DEFAULT_USER_ROLE;
+
 public class CustomOAuth2Filter implements Filter {
 	private static final Logger log = LoggerFactory.getLogger(CustomOAuth2Filter.class);
 	private final String clientId;
@@ -103,8 +106,8 @@ public class CustomOAuth2Filter implements Filter {
 				Set<GrantedAuthority> authorities = new HashSet<>();
 				extractRoles(userInfo, authorities);
 				// Optionally add default roles if necessary
-				//authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-				authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+				authorities.add(new SimpleGrantedAuthority(DEFAULT_USER_ROLE));
+				authorities.add(new SimpleGrantedAuthority(DEFAULT_ADMIN_ROLE));
 
 				synchronizeUser(username);
 				setupSecurityContext(username, authorities, null, req); // No session for API
@@ -173,6 +176,8 @@ public class CustomOAuth2Filter implements Filter {
 			JSONObject userInfo = new JSONObject(getUserInfo(token.getString("access_token")));
 
 			String username = userInfo.getString("preferred_username");
+			if ("okmadmin".equals(username)) username = "okmAdmin";
+
 			Set<GrantedAuthority> authorities = extractAuthorities(token, userInfo);
 
 			synchronizeUser(username);
@@ -216,8 +221,8 @@ public class CustomOAuth2Filter implements Filter {
 		Set<GrantedAuthority> authorities = new HashSet<>();
 		extractRoles(token, authorities);
 		extractRoles(userInfo, authorities);
-		//authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-		authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+		authorities.add(new SimpleGrantedAuthority(DEFAULT_USER_ROLE));
+		authorities.add(new SimpleGrantedAuthority(DEFAULT_ADMIN_ROLE));
 		return authorities;
 	}
 
