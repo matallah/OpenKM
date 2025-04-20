@@ -614,13 +614,14 @@ public class DbAuthModule implements AuthModule, ApplicationContextAware {
 		String name;
 
 		try {
-			if (token == null) {
-				PrincipalUtils.getAuthentication();
-			} else {
-				oldAuth = PrincipalUtils.getAuthentication();
-				PrincipalUtils.getAuthenticationByToken(token);
+			if (!"SSO".equals(token)) {
+				if (token == null) {
+					PrincipalUtils.getAuthentication();
+				} else {
+					oldAuth = PrincipalUtils.getAuthentication();
+					PrincipalUtils.getAuthenticationByToken(token);
+				}
 			}
-
 			name = CommonAuthModule.getName(user);
 		} catch (AccessDeniedException e) {
 			throw new PrincipalAdapterException(e.getMessage(), e);

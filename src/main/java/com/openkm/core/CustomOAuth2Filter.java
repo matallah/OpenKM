@@ -14,6 +14,9 @@ import java.util.stream.Collectors;
 
 import com.openkm.api.OKMAuth;
 import com.openkm.api.OKMUserConfig;
+import com.openkm.dao.AuthDAO;
+import com.openkm.dao.bean.Role;
+import com.openkm.dao.bean.User;
 import com.openkm.dao.bean.UserConfig;
 import com.openkm.module.AuthModule;
 import com.openkm.module.ModuleManager;
@@ -195,7 +198,7 @@ public class CustomOAuth2Filter implements Filter {
 			AuthModule am = ModuleManager.getAuthModule();
 			//OKMAuth.getInstance().assignRole(null, username, DEFAULT_ADMIN_ROLE);
 			setupSecurityContext(username, authorities, session, req);
-			configureUserSession(session, username); // Load user config into session
+			//configureUserSession(session, username); // Load user config into session
 
 			return new AuthRequestWrapper(req, username);
 		} catch (Exception e) {
@@ -249,14 +252,26 @@ public class CustomOAuth2Filter implements Filter {
 	private void synchronizeUser(String username) {
 		try {
 			DbAuthModule.loadUserData(username);
-		} catch (Exception e) {
-			log.info("Creating new user: {}", username);
-			try {
-				OKMAuth.getInstance().createUser("SSO", username, username, username + "@test.com", username.toUpperCase(), true);
-				OKMAuth.getInstance().assignRole("SSO", username, DEFAULT_USER_ROLE);
-			} catch (PrincipalAdapterException ex) {
-				throw new RuntimeException(ex);
+			boolean isCreated = OKMAuth.getInstance().getRolesByUser("SSO", username).isEmpty();
+			if (isCreated){
+				try {
+					log.info("Creating new user: {}", username);
+					User usr = new User();
+					usr.setId(username);
+					usr.setPassword(username);
+					usr.setName(username.toUpperCase());
+					usr.setEmail(username + "@test.com");
+					usr.setActive(true);
+					AuthDAO.createUserFromSSO(usr);
+					Role rol = AuthDAO.findRoleByPk(DEFAULT_USER_ROLE);
+					usr.getRoles().add(rol);
+					AuthDAO.updateUserFromSSO(usr);
+				} catch (DatabaseException ex) {
+					throw new RuntimeException(ex);
+				}
 			}
+		} catch (Exception e) {
+
 		}
 	}
 

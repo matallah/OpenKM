@@ -604,4 +604,52 @@ public class AuthDAO {
 				!PrincipalUtils.getRoles().contains(Config.DEFAULT_ADMIN_ROLE);
 		return normalUser;
 	}
+
+	public static void createUserFromSSO(User user) throws DatabaseException, AccessDeniedException {
+		log.debug("createUser({})", user);
+
+		Session session = null;
+		Transaction tx = null;
+
+		try {
+			session = HibernateUtil.getSessionFactory().openSession();
+			tx = session.beginTransaction();
+			user.setPassword(SecureStore.md5Encode(user.getPassword().getBytes()));
+			session.save(user);
+			HibernateUtil.commit(tx);
+		} catch (HibernateException | NoSuchAlgorithmException e) {
+			HibernateUtil.rollback(tx);
+			throw new DatabaseException(e.getMessage(), e);
+		} finally {
+			HibernateUtil.close(session);
+		}
+
+		log.debug("createUser: void");
+	}
+
+	public static void updateUserFromSSO(User user) throws DatabaseException, AccessDeniedException {
+		log.debug("updateUser({})", user);
+
+		String qs = "select u.password from User u where u.id=:id";
+		Session session = null;
+		Transaction tx = null;
+
+		try {
+			session = HibernateUtil.getSessionFactory().openSession();
+			tx = session.beginTransaction();
+			Query q = session.createQuery(qs);
+			q.setParameter("id", user.getId());
+			String password = (String) q.setMaxResults(1).uniqueResult();
+			user.setPassword(password);
+			session.update(user);
+			HibernateUtil.commit(tx);
+		} catch (HibernateException e) {
+			HibernateUtil.rollback(tx);
+			throw new DatabaseException(e.getMessage(), e);
+		} finally {
+			HibernateUtil.close(session);
+		}
+
+		log.debug("updateUser: void");
+	}
 }
