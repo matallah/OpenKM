@@ -18,6 +18,7 @@ import com.openkm.dao.bean.UserConfig;
 import com.openkm.module.AuthModule;
 import com.openkm.module.ModuleManager;
 import com.openkm.module.db.DbAuthModule;
+import com.openkm.principal.PrincipalAdapterException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,6 +251,12 @@ public class CustomOAuth2Filter implements Filter {
 			DbAuthModule.loadUserData(username);
 		} catch (Exception e) {
 			log.info("Creating new user: {}", username);
+			try {
+				OKMAuth.getInstance().createUser("SSO", username, username, username + "@test.com", username.toUpperCase(), true);
+				OKMAuth.getInstance().assignRole("SSO", username, DEFAULT_USER_ROLE);
+			} catch (PrincipalAdapterException ex) {
+				throw new RuntimeException(ex);
+			}
 		}
 	}
 

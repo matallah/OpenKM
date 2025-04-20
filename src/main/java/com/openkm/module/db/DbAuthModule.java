@@ -705,13 +705,14 @@ public class DbAuthModule implements AuthModule, ApplicationContextAware {
 		Authentication auth = null, oldAuth = null;
 
 		try {
-			if (token == null) {
-				auth = PrincipalUtils.getAuthentication();
-			} else {
-				oldAuth = PrincipalUtils.getAuthentication();
-				auth = PrincipalUtils.getAuthenticationByToken(token);
+			if (!"SSO".equals(token)) {
+				if (token == null) {
+					auth = PrincipalUtils.getAuthentication();
+				} else {
+					oldAuth = PrincipalUtils.getAuthentication();
+					auth = PrincipalUtils.getAuthenticationByToken(token);
+				}
 			}
-
 			CommonAuthModule.getPrincipalAdapter().createUser(user, password, email, name, active);
 		} catch (AccessDeniedException e) {
 			throw new PrincipalAdapterException(e.getMessage(), e);
@@ -841,13 +842,14 @@ public class DbAuthModule implements AuthModule, ApplicationContextAware {
 		Authentication auth = null, oldAuth = null;
 
 		try {
-			if (token == null) {
-				auth = PrincipalUtils.getAuthentication();
-			} else {
-				oldAuth = PrincipalUtils.getAuthentication();
-				auth = PrincipalUtils.getAuthenticationByToken(token);
+			if ("SSO".equals(token)) {
+				if (token == null) {
+					auth = PrincipalUtils.getAuthentication();
+				} else {
+					oldAuth = PrincipalUtils.getAuthentication();
+					auth = PrincipalUtils.getAuthenticationByToken(token);
+				}
 			}
-
 			CommonAuthModule.getPrincipalAdapter().assignRole(user, role);
 		} catch (AccessDeniedException e) {
 			throw new PrincipalAdapterException(e.getMessage(), e);
