@@ -75,8 +75,16 @@ public class BaseServlet extends HttpServlet {
 	 * - Multiple Instances is inactive AND user has AdminRole role
 	 */
 	public static boolean isMultipleInstancesAdmin(HttpServletRequest request) {
-		return (Config.SYSTEM_MULTIPLE_INSTANCES || Config.CLOUD_MODE) && request.getRemoteUser().equals(Config.ADMIN_USER) ||
-				!(Config.SYSTEM_MULTIPLE_INSTANCES || Config.CLOUD_MODE) && request.isUserInRole(Config.DEFAULT_ADMIN_ROLE);
+			return (Config.SYSTEM_MULTIPLE_INSTANCES || Config.CLOUD_MODE) && request.getRemoteUser().equals(Config.ADMIN_USER) ||
+				!(Config.SYSTEM_MULTIPLE_INSTANCES || Config.CLOUD_MODE) && java.util.Optional.ofNullable(
+						(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+							.getSession()
+							.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+					)
+					.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+					.map(auth -> auth.getAuthorities().stream()
+						.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+					.orElse(false);
 	}
 
 	/**

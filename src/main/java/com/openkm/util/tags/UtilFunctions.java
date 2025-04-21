@@ -49,7 +49,7 @@ public class UtilFunctions {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Replace string
 	 */
@@ -60,12 +60,20 @@ public class UtilFunctions {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Check for user with ROLE_ADMIN role.
 	 */
 	public static boolean isAdmin() {
-		return PrincipalUtils.hasRole(Config.DEFAULT_ADMIN_ROLE);
+		return java.util.Optional.ofNullable(
+				(org.springframework.security.core.context.SecurityContext) com.openkm.core.CustomOAuth2Filter.getNewThreadLocalRequest()
+					.getSession()
+					.getAttribute(com.openkm.core.CustomOAuth2Filter.SPRING_SECURITY_CONTEXT)
+			)
+			.map(org.springframework.security.core.context.SecurityContext::getAuthentication)
+			.map(auth -> auth.getAuthorities().stream()
+				.anyMatch(grantedAuthority -> Config.DEFAULT_ADMIN_ROLE.equals(grantedAuthority.getAuthority())))
+			.orElse(false);
 	}
 
 	/**

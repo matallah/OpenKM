@@ -21,7 +21,8 @@ import com.openkm.dao.bean.UserConfig;
 import com.openkm.module.AuthModule;
 import com.openkm.module.ModuleManager;
 import com.openkm.module.db.DbAuthModule;
-import com.openkm.principal.PrincipalAdapterException;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,19 +187,36 @@ public class CustomOAuth2Filter implements Filter {
 			String redirectUri = buildRedirectUrl(req);
 			JSONObject token = new JSONObject(exchangeCodeForToken(code, redirectUri));
 			JSONObject userInfo = new JSONObject(getUserInfo(token.getString("access_token")));
+			JSONArray rolesArray = new JSONArray();
+			Set<String> roles = new HashSet<>();
+
+			try {
+				rolesArray = userInfo
+					.getJSONObject("resource_access")
+					.getJSONObject("OpenKM")
+					.getJSONArray("roles");
+			} catch (JSONException e) {
+				roles.add(DEFAULT_USER_ROLE);
+			}
+			for (int i = 0; i < rolesArray.length(); i++) {
+				roles.add(rolesArray.getString(i));
+			}
 
 			String username = userInfo.getString("preferred_username");
 			String userToken = token.getString("access_token");
-			if ("okmadmin".equals(username)) username = "okmAdmin";
+			if ("okmadmin".equals(username)) {
+				username = "okmAdmin";
+				roles.add(DEFAULT_ADMIN_ROLE);
+			}
 
 			synchronizeUser(username); // Ensure user exists in OpenKM
 
-			// Fetch OpenKM user roles after synchronization
-			Set<GrantedAuthority> authorities = getOpenKMAuthorities(userToken, username);
-			AuthModule am = ModuleManager.getAuthModule();
-			//OKMAuth.getInstance().assignRole(null, username, DEFAULT_ADMIN_ROLE);
+			// Convert Set<String> roles into Set<GrantedAuthority>
+			Set<GrantedAuthority> authorities = roles.stream()
+				.map(SimpleGrantedAuthority::new)
+				.collect(Collectors.toSet());
+
 			setupSecurityContext(username, authorities, session, req);
-			//configureUserSession(session, username); // Load user config into session
 
 			return new AuthRequestWrapper(req, username);
 		} catch (Exception e) {
@@ -253,7 +271,7 @@ public class CustomOAuth2Filter implements Filter {
 		try {
 			DbAuthModule.loadUserData(username);
 			boolean isCreated = OKMAuth.getInstance().getRolesByUser("SSO", username).isEmpty();
-			if (isCreated){
+			if (isCreated) {
 				try {
 					log.info("Creating new user: {}", username);
 					User usr = new User();
