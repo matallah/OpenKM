@@ -271,7 +271,7 @@ public class NodeDocumentVersionDAO extends GenericDAO<NodeDocumentVersion, Stri
 
 			if (extendedSecurity) {
 				if ((Config.SECURITY_EXTENDED_MASK & Permission.DOWNLOAD) == Permission.DOWNLOAD) {
-					SecurityHelper.checkExtended(nDoc, Permission.DOWNLOAD);
+					SecurityHelper.checkExtended(nDoc, Permission.READ);
 				}
 			}
 
